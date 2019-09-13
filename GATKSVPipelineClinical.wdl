@@ -918,6 +918,12 @@ workflow GATKSVPipelineClinical {
     File final_vcf = FinalVCFCleanup.out
     File final_vcf_idx = FinalVCFCleanup.out_idx
   }
+
+  meta {
+    author: "Christopher Whelan"
+    email: "cwhelan@broadinstitute.org"
+    description: "GATK-SV pipeline for clinical WGS structural variation calling. This is a prototype version under development that is not supported."
+  }
 }
 
 task StringArrayToListFile {
