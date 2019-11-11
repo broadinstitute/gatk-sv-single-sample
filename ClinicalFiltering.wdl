@@ -106,6 +106,63 @@ task FilterVcfForShortDepthCalls {
 }
 
 
+task GetUniqueNonGenotypedDepthCalls {
+  input {
+    File vcf_gz
+    String sample_id
+    File ref_panel_dels
+    File ref_panel_dups
+    String sv_mini_docker
+
+    RuntimeAttr? runtime_attr_override
+  }
+
+  RuntimeAttr default_attr = object {
+    cpu_cores: 1,
+    mem_gb: 3.75,
+    disk_gb: 10,
+    boot_disk_gb: 10,
+    preemptible_tries: 3,
+    max_retries: 1
+  }
+  RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
+
+  String filebase = basename(vcf_gz, ".vcf.gz")
+  String outfile = "~{filebase}.unique_~{sample_id}_depth_non_alt_gt.vcf.gz"
+
+  output {
+    File out = "~{outfile}"
+    File out_idx = "~{outfile}.tbi"
+
+  }
+  command <<<
+    set -euo pipefail
+    sampleIndex=`gzip -cd ~{vcf_gz} | grep CHROM | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
+
+    bcftools filter \
+        -i "FILTER == \"PASS\" && GT[${sampleIndex}]!=\"alt\" && INFO/ALGORITHMS[*] == \"depth\"" \
+        ~{vcf_gz} | bgzip -c > pass_depth_not_alt.vcf.gz
+
+    bgzip -cd pass_depth_not_alt.vcf.gz | grep '#' > header.txt
+
+    zcat ~{ref_panel_dels} ~{ref_panel_dups} | sort -k1,1V -k2,2n > ref_panel_depth_calls.bed
+    intersectBed -a pass_depth_not_alt.vcf.gz -b ref_panel_depth_calls.bed -r -f .5 -v > unique_depth_records.txt
+
+    cat header.txt unique_depth_records.txt | bgzip -c > ~{outfile}
+
+    tabix ~{outfile}
+  >>>
+  runtime {
+    cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+    memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
+    disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+    docker: sv_mini_docker
+    preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+    maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
+  }
+}
+
 task FilterVcfForCaseSampleGenotype {
   input {
     File vcf_gz

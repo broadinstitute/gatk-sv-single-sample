@@ -59,9 +59,9 @@ workflow Module05_06 {
     File depth_blacklist_idx
     String prefix
     File trios_fam_file
-    File sanders_2015_tarball
-    File collins_2017_tarball
-    File werling_2018_tarball
+    File? sanders_2015_tarball
+    File? collins_2017_tarball
+    File? werling_2018_tarball
     File rf_cutoffs
     File batches_list
     File depth_gt_rd_sep_list
