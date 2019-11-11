@@ -22,9 +22,6 @@ workflow ClusterPESR {
     File contigs
     Int dist
     String flags
-    File Sanders_2015_tarball
-    File collins_2017_tarball
-    File Werling_2018_tarball
 
     String sv_mini_docker
     String sv_pipeline_docker

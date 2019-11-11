@@ -32,9 +32,6 @@ workflow Module01 {
     String depth_flags
     Float depth_frac
     File contigs
-    File Sanders_2015_tarball
-    File Werling_2018_tarball
-    File Collins_2017_tarball
 
     String sv_mini_docker
     String sv_pipeline_docker
@@ -52,14 +49,11 @@ workflow Module01 {
         algorithm = "manta",
         vcfs = select_first([manta_vcfs]),
         svsize = pesr_svsize,
-        Sanders_2015_tarball = Sanders_2015_tarball,
         frac = pesr_frac,
-        collins_2017_tarball = Collins_2017_tarball,
         svtypes = "DEL,DUP,INV,BND,INS",
         flags = pesr_flags,
         batch = batch,
         dist = pesr_distance,
-        Werling_2018_tarball = Werling_2018_tarball,
         blacklist = pesr_blacklist,
         contigs = contigs,
         sv_mini_docker = sv_mini_docker,
@@ -75,14 +69,11 @@ workflow Module01 {
         algorithm = "delly",
         vcfs = select_first([delly_vcfs]),
         svsize = pesr_svsize,
-        Sanders_2015_tarball = Sanders_2015_tarball,
         frac = pesr_frac,
-        collins_2017_tarball = Collins_2017_tarball,
         svtypes = "DEL,DUP,INV,BND,INS",
         flags = pesr_flags,
         batch = batch,
         dist = pesr_distance,
-        Werling_2018_tarball = Werling_2018_tarball,
         blacklist = pesr_blacklist,
         contigs = contigs,
         sv_mini_docker = sv_mini_docker,
@@ -98,14 +89,11 @@ workflow Module01 {
         algorithm = "wham",
         vcfs = select_first([wham_vcfs]),
         svsize = pesr_svsize,
-        Sanders_2015_tarball = Sanders_2015_tarball,
         frac = pesr_frac,
-        collins_2017_tarball = Collins_2017_tarball,
         svtypes = "DEL,DUP,INV,BND,INS",
         flags = pesr_flags,
         batch = batch,
         dist = pesr_distance,
-        Werling_2018_tarball = Werling_2018_tarball,
         blacklist = pesr_blacklist,
         contigs = contigs,
         sv_mini_docker = sv_mini_docker,
@@ -121,14 +109,11 @@ workflow Module01 {
         algorithm = "melt",
         vcfs = select_first([melt_vcfs]),
         svsize = pesr_svsize,
-        Sanders_2015_tarball = Sanders_2015_tarball,
         frac = pesr_frac,
-        collins_2017_tarball = Collins_2017_tarball,
         svtypes = "DEL,DUP,INV,BND,INS",
         flags = pesr_flags,
         batch = batch,
         dist = pesr_distance,
-        Werling_2018_tarball = Werling_2018_tarball,
         blacklist = pesr_blacklist,
         contigs = contigs,
         sv_mini_docker = sv_mini_docker,

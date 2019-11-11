@@ -314,7 +314,7 @@ workflow Module00c {
       runtime_attr_merge_set = depth_merge_set_runtime_attr
   }
 
-  Float median_cov_mem_gb = select_first([median_cov_mem_gb_per_sample, 0.5]) * length(all_samples)
+  Float median_cov_mem_gb = select_first([median_cov_mem_gb_per_sample, 0.5]) * length(all_samples) + 7.5
   call mc.MedianCov as MedianCov {
     input:
       bincov_matrix = MakeBincovMatrix.merged_bincov,

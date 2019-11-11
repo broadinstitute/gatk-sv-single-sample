@@ -84,7 +84,9 @@ workflow FilterOutlierSamples {
   output {
     Array[File?] vcfs_noOutliers = ExcludeOutliers.vcf_no_outliers
     Array[String] filtered_batch_samples_list = FilterSampleList.filtered_samples_list
+    File filtered_batch_samples_file = FilterSampleList.filtered_samples_file
     Array[String] outlier_samples_excluded = CatOutliers.outliers_list
+    File outlier_samples_excluded_file = CatOutliers.outliers_file
   }
 }
 
@@ -210,6 +212,7 @@ task FilterSampleList {
 
   output {
     Array[String] filtered_samples_list = read_lines("${batch}.post03_outliers_excluded.samples.list")
+    File filtered_samples_file = "${batch}.post03_outliers_excluded.samples.list"
   }
   command <<<
 
@@ -249,6 +252,7 @@ task CatOutliers {
 
   output {
     Array[String] outliers_list = read_lines("${batch}.post03_outliers.samples.list")
+    File outliers_file = "${batch}.post03_outliers.samples.list"
   }
   command <<<
 

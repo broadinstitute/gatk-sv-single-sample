@@ -26,9 +26,9 @@ workflow MasterVcfQc {
     String prefix
     Int sv_per_shard
     Int samples_per_shard
-    File sanders_2015_tarball
-    File collins_2017_tarball
-    File werling_2018_tarball
+    File? sanders_2015_tarball
+    File? collins_2017_tarball
+    File? werling_2018_tarball
     Array[String] contigs
     Int? random_seed
     Boolean include_external_benchmarking
@@ -231,7 +231,7 @@ workflow MasterVcfQc {
         vcf_stats=MergeVcfwideStatShards.merged_bed_file,
         samples_list=CollectQcVcfwide.samples_list[0],
         per_sample_tarball=CollectPerSampleVidLists.vid_lists,
-        comparison_tarball=sanders_2015_tarball,
+        comparison_tarball=select_first([sanders_2015_tarball]),
         prefix=prefix,
         comparison_set_name="Sanders_2015_array",
         samples_per_shard=samples_per_shard,
@@ -260,7 +260,7 @@ workflow MasterVcfQc {
         vcf_stats=MergeVcfwideStatShards.merged_bed_file,
         samples_list=CollectQcVcfwide.samples_list[0],
         per_sample_tarball=CollectPerSampleVidLists.vid_lists,
-        comparison_tarball=collins_2017_tarball,
+        comparison_tarball=select_first([collins_2017_tarball]),
         prefix=prefix,
         comparison_set_name="Collins_2017_liWGS",
         samples_per_shard=samples_per_shard,
@@ -289,7 +289,7 @@ workflow MasterVcfQc {
         vcf_stats=MergeVcfwideStatShards.merged_bed_file,
         samples_list=CollectQcVcfwide.samples_list[0],
         per_sample_tarball=CollectPerSampleVidLists.vid_lists,
-        comparison_tarball=werling_2018_tarball,
+        comparison_tarball=select_first([werling_2018_tarball]),
         prefix=prefix,
         comparison_set_name="Werling_2018_WGS",
         samples_per_shard=samples_per_shard,

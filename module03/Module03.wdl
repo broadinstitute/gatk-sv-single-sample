@@ -113,6 +113,8 @@ workflow Module03 {
     File RF_intermediate_files = AdjudicateSV.RF_intermediate_files
     Array[String] outlier_samples_excluded = FilterOutlierSamples.outlier_samples_excluded
     Array[String] batch_samples_postOutlierExclusion = FilterOutlierSamples.filtered_batch_samples_list
+    File outlier_samples_excluded_file = FilterOutlierSamples.outlier_samples_excluded_file
+    File batch_samples_postOutlierExclusion_file = FilterOutlierSamples.filtered_batch_samples_file
     File ped_file_postOutlierExclusion = UpdatePedFile.filtered_ped_file
   }
 }

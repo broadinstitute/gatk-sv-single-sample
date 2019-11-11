@@ -7,7 +7,6 @@ version 1.0
 ##########################################################################################
 
 import "Structs.wdl"
-import "BincovQC.wdl" as bqc
 import "MakeBincovMatrix.wdl" as mbm
 import "PloidyEstimation.wdl" as pe
 import "RawVcfQC.wdl" as vcfqc
@@ -16,7 +15,7 @@ import "WGD.wdl" as wgd
 # Runs single sample tasks on collected evidence:
 #   - Ploidy determination
 #   - Dosage scoring
-#   - QC for coverage and calls (optional)
+#   - QC for raw SV calls (optional)
 
 workflow Module00b {
   input {
@@ -25,7 +24,6 @@ workflow Module00b {
     Array[String]+ samples
 
     # Optional QC tasks
-    Boolean run_bincov_qc
     Boolean run_vcf_qc
 
     # Global files
@@ -60,7 +58,6 @@ workflow Module00b {
 
     RuntimeAttr? wgd_build_runtime_attr
     RuntimeAttr? wgd_score_runtime_attr
-    RuntimeAttr? runtime_attr_bincov_qc
     RuntimeAttr? runtime_attr_bincov_attr
   }
 
@@ -95,19 +92,6 @@ workflow Module00b {
       sv_pipeline_qc_docker = sv_pipeline_qc_docker,
       runtime_attr_build = wgd_build_runtime_attr,
       runtime_attr_score = wgd_score_runtime_attr
-  }
-
-  if (run_bincov_qc) {
-    scatter (i in range(length(counts))) {
-      call bqc.BincovQC as BincovQC {
-        input:
-          counts_file = counts[i],
-          sample = samples[i],
-          genome_file = genome_file,
-          sv_pipeline_docker = sv_pipeline_docker,
-          runtime_attr_qc = runtime_attr_bincov_qc
-      }
-    }
   }
 
   if (run_vcf_qc) {
@@ -154,10 +138,6 @@ workflow Module00b {
   }
 
   output {
-    Array[File]? bincov_qc = BincovQC.qc_result
-    Array[File]? bincov_qc_raw_chr = BincovQC.qc_raw_chr
-    Array[File]? bincov_qc_raw_chr_index = BincovQC.qc_raw_chr_index
-
     File? delly_qc_low = RawVcfQC_Delly.low
     File? delly_qc_high = RawVcfQC_Delly.high
     File? manta_qc_low = RawVcfQC_Manta.low

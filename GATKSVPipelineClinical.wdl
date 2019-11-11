@@ -13,6 +13,7 @@ import "module04/Module04.wdl" as m04
 import "module05_06/Module05_06.wdl" as m0506
 import "gcnv/GermlineCNVCase.wdl" as gcnv
 import "ClinicalFiltering.wdl" as ClinicalFiltering
+import "GATKSVPipelineClinicalMetrics.wdl" as ClinicalMetrics
 import "Structs.wdl"
 
 # GATK SV Pipeline single sample mode
@@ -23,7 +24,6 @@ workflow GATKSVPipelineClinical {
     # Batch info
     String batch
     String sample_id
-    String sample_sex # to go into ped file (should be ped-encoded, 1=Male, 2=Female)
 
     # Global files
     File ref_ped_file
@@ -41,6 +41,7 @@ workflow GATKSVPipelineClinical {
     String sv_base_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
+    String sv_pipeline_base_docker
     String sv_pipeline_qc_docker
     String linux_docker
     String cnmops_docker
@@ -57,6 +58,9 @@ workflow GATKSVPipelineClinical {
 
     File bam_or_cram_file
     File bam_or_cram_index
+
+    # Use only for crams in requester pays buckets
+    Boolean requester_pays_crams = false
 
     # Common parameters
     String? reference_version   # Either "38" or "19"
@@ -89,7 +93,6 @@ workflow GATKSVPipelineClinical {
     ############################################################
 
     # Optional QC tasks
-    Boolean run_bincov_qc
     Boolean run_vcf_qc
 
     # WGD files
@@ -101,7 +104,6 @@ workflow GATKSVPipelineClinical {
     RuntimeAttr? ploidy_build_runtime_attr
     RuntimeAttr? wgd_build_runtime_attr
     RuntimeAttr? wgd_score_runtime_attr
-    RuntimeAttr? runtime_attr_bincov_qc
 
     ############################################################
     ## Module 00c
@@ -221,9 +223,9 @@ workflow GATKSVPipelineClinical {
     File pesr_blacklist
     String depth_flags
     Float depth_frac
-    File Sanders_2015_tarball
-    File Werling_2018_tarball
-    File Collins_2017_tarball
+    File? Sanders_2015_tarball
+    File? Werling_2018_tarball
+    File? Collins_2017_tarball
 
     RuntimeAttr? runtime_attr_pesr_cluster
     RuntimeAttr? runtime_attr_pesr_concat
@@ -330,12 +332,20 @@ workflow GATKSVPipelineClinical {
     RuntimeAttr? runtime_override_merge_fam_file_list
     RuntimeAttr? runtime_override_make_cpx_cnv_input_file
 
+
+    ############################################################
+    ## QC
+    ############################################################
+
+    File qc_definitions
+
   }
 
   call m00a.Module00a as Module00a {
     input:
       bam_or_cram_files=[bam_or_cram_file],
       bam_or_cram_indexes=[bam_or_cram_index],
+      requester_pays_crams=requester_pays_crams,
       samples=[sample_id],
       run_delly=false,
       batch=batch,
@@ -375,13 +385,10 @@ workflow GATKSVPipelineClinical {
     input:
       batch=batch,
       samples=[sample_id],
-      run_bincov_qc=run_bincov_qc,
       run_vcf_qc=run_vcf_qc,
       genome_file=genome_file,
       counts=select_first([Module00a.coverage_counts, emptyFileArray]),
       run_ploidy = false,
-      manta_vcfs=Module00a.manta_vcf,
-      wham_vcfs=Module00a.wham_vcf,
       wgd_scoring_mask=wgd_scoring_mask,
       sv_pipeline_docker=sv_pipeline_docker,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
@@ -389,8 +396,7 @@ workflow GATKSVPipelineClinical {
       runtime_attr_qc=runtime_attr_qc,
       runtime_attr_qc_outlier=runtime_attr_qc_outlier,
       wgd_build_runtime_attr=wgd_build_runtime_attr,
-      wgd_score_runtime_attr=wgd_score_runtime_attr,
-      runtime_attr_bincov_qc=runtime_attr_bincov_qc
+      wgd_score_runtime_attr=wgd_score_runtime_attr
   }
 
   call m00c.Module00c as Module00c {
@@ -531,9 +537,6 @@ workflow GATKSVPipelineClinical {
       depth_flags=depth_flags,
       depth_frac=depth_frac,
       contigs=primary_contigs_fai,
-      Sanders_2015_tarball=Sanders_2015_tarball,
-      Werling_2018_tarball=Werling_2018_tarball,
-      Collins_2017_tarball=Collins_2017_tarball,
       sv_mini_docker=sv_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
       runtime_attr_pesr_cluster=runtime_attr_pesr_cluster,
@@ -845,6 +848,15 @@ workflow GATKSVPipelineClinical {
       sv_mini_docker=sv_mini_docker
   }
 
+  call ClinicalFiltering.GetUniqueNonGenotypedDepthCalls as GetUniqueNonGenotypedDepthCalls {
+    input:
+      vcf_gz=FilterVcfDepthLt5kb.out,
+      sample_id=sample_id,
+      ref_panel_dels=ref_panel_del_bed,
+      ref_panel_dups=ref_panel_dup_bed,
+      sv_mini_docker=sv_mini_docker
+  }
+
   call ClinicalFiltering.FilterVcfForCaseSampleGenotype as FilterVcfForCaseSampleGenotype {
     input:
       vcf_gz=FilterVcfDepthLt5kb.out,
@@ -873,50 +885,45 @@ workflow GATKSVPipelineClinical {
       sv_mini_docker=sv_mini_docker
   }
 
+  call ClinicalMetrics.ClinicalMetrics {
+    input:
+      name = batch,
+      ref_samples = ref_samples,
+      case_sample = sample_id,
+      wgd_scores = Module00b.WGD_scores,
+      sample_pe = select_first([Module00a.pesr_disc])[0],
+      sample_sr = select_first([Module00a.pesr_split])[0],
+      sample_counts = select_first([Module00a.coverage_counts])[0],
+      cleaned_vcf = Module0506.cleaned_vcf,
+      final_vcf = FinalVCFCleanup.out,
+      genotyped_pesr_vcf = Module04.genotyped_pesr_vcf,
+      genotyped_depth_vcf = Module04.genotyped_depth_vcf,
+      non_genotyped_unique_depth_calls_vcf = GetUniqueNonGenotypedDepthCalls.out,
+      contig_list = primary_contigs_list,
+      linux_docker = linux_docker,
+      sv_pipeline_base_docker = sv_pipeline_base_docker
+  }
+
+  call ClinicalQC {
+    input:
+      name = batch,
+      metrics = ClinicalMetrics.metrics_file,
+      qc_definitions = qc_definitions,
+      sv_pipeline_base_docker = sv_pipeline_base_docker
+  }
+
   output {
-    # Module 00b
-    Array[File]? bincov_qc = Module00b.bincov_qc
-    Array[File]? bincov_qc_raw_chr = Module00b.bincov_qc_raw_chr
-    Array[File]? bincov_qc_raw_chr_index = Module00b.bincov_qc_raw_chr_index
-
-    File? manta_qc_low = Module00b.manta_qc_low
-    File? manta_qc_high = Module00b.manta_qc_high
-    File? melt_qc_low = Module00b.melt_qc_low
-    File? melt_qc_high = Module00b.melt_qc_high
-    File? wham_qc_low = Module00b.wham_qc_low
-    File? wham_qc_high = Module00b.wham_qc_high
-
-    File WGD_dist = Module00b.WGD_dist
-    File WGD_matrix = Module00b.WGD_matrix
-    File WGD_scores = Module00b.WGD_scores
-
-    #Module 00c
-    File? PE_stats = Module00c.PE_stats
-    File? RD_stats = Module00c.RD_stats
-    File? SR_stats = Module00c.SR_stats
-    File? Matrix_QC_plot = Module00c.Matrix_QC_plot
-
-    File ploidy_matrix = select_first([Module00c.ploidy_matrix])
-    File ploidy_plots = select_first([Module00c.ploidy_plots])
-
-    # Module 04
-    File genotyped_depth_vcf = Module04.genotyped_depth_vcf
-    File genotyped_depth_vcf_index = Module04.genotyped_depth_vcf_index
-    File sr_background_fail = Module04.sr_background_fail
-    File genotyped_pesr_vcf = Module04.genotyped_pesr_vcf
-    File genotyped_pesr_vcf_index = Module04.genotyped_pesr_vcf_index
-    File sr_bothside_pass = Module04.sr_bothside_pass
-
-    # module 0506
-    File cleaned_vcf = Module0506.cleaned_vcf
-    File cleaned_vcf_idx = Module0506.cleaned_vcf_idx
-    File cleaned_vcf_qc = Module0506.cleaned_vcf_qc
-
-    File filtered_case_sample_vcf = FilterVcfWithReferencePanelCalls.out
-    File filtered_case_sample_vcf_idx = FilterVcfWithReferencePanelCalls.out_idx
-
     File final_vcf = FinalVCFCleanup.out
     File final_vcf_idx = FinalVCFCleanup.out_idx
+    File ploidy_matrix = select_first([Module00c.ploidy_matrix])
+    File ploidy_plots = select_first([Module00c.ploidy_plots])
+    File metrics_file = ClinicalMetrics.metrics_file
+    File qc_file = ClinicalQC.out
+
+    # These files contain any depth based calls made in the case sample that did not pass genotyping
+    # in the case sample and do not match a depth-based call from the reference panel.
+    File non_genotyped_unique_depth_calls = GetUniqueNonGenotypedDepthCalls.out
+    File non_genotyped_unique_depth_calls_idx = GetUniqueNonGenotypedDepthCalls.out_idx
   }
 
   meta {
@@ -961,4 +968,38 @@ task StringArrayToListFile {
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
+}
+
+
+task ClinicalQC {
+  input {
+    String name
+    File metrics
+    File qc_definitions
+    String sv_pipeline_base_docker
+    Float mem_gib = 1
+    Int disk_gb = 10
+    Int preemptible_attempts = 3
+  }
+
+  output {
+    File out = "sv_qc.~{name}.tsv"
+  }
+  command <<<
+
+    set -eu
+    svqc ~{metrics} ~{qc_definitions} raw_qc.tsv
+    grep -vw "NA" raw_qc.tsv > sv_qc.~{name}.tsv
+
+  >>>
+  runtime {
+    cpu: 1
+    memory: "~{mem_gib} GiB"
+    disks: "local-disk ~{disk_gb} HDD"
+    bootDiskSizeGb: 10
+    docker: sv_pipeline_base_docker
+    preemptible: preemptible_attempts
+    maxRetries: 1
+  }
+
 }
