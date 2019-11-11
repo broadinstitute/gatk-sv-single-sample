@@ -2,8 +2,8 @@
    "GATKSVPipelineClinical.sample_id" : "SM-GN4BI",
    "GATKSVPipelineClinical.sample_sex" : "2",
    "GATKSVPipelineClinical.batch" : "gatk_sv_clinical_v1b",
-   "GATKSVPipelineClinical.bam_or_cram_file" : "gs://fc-dce6617d-8c29-47c3-8da9-ed441f0b7287/Set_4_7_HapMap_samples_3-22-2018/RP-1536/WGS/SM-GN4BI/v1/NA19240_NA19240_1a_SM-GN4BI_v1.cram",
-   "GATKSVPipelineClinical.bam_or_cram_index" : "gs://fc-dce6617d-8c29-47c3-8da9-ed441f0b7287/Set_4_7_HapMap_samples_3-22-2018/RP-1536/WGS/SM-GN4BI/v1/NA19240_NA19240_1a_SM-GN4BI_v1.cram.crai",
+   "GATKSVPipelineClinical.bam_or_cram_file" : "gs://gatk-sv-resources/samples/NA24385/NA24385_NA24385_O1D1_SM-G947H_v1_NS.cram",
+   "GATKSVPipelineClinical.bam_or_cram_index" : "gs://gatk-sv-resources/samples/NA24385/NA24385_NA24385_O1D1_SM-G947H_v1_NS.cram",
 
    "GATKSVPipelineClinical.wham_whitelist_bed_file": "gs://gatk-sv-resources/caller_benchmark/ref/wham_whitelist.bed",
 
@@ -50,9 +50,9 @@
    "GATKSVPipelineClinical.ref_panel_del_bed" : "gs://gatk-sv-resources/clinical/reference_panel_v1b/merged_evidence/ref_panel_v1b.DEL.bed.gz",
    "GATKSVPipelineClinical.ref_panel_dup_bed" : "gs://gatk-sv-resources/clinical/reference_panel_v1b/merged_evidence/ref_panel_v1b.DUP.bed.gz",
    "GATKSVPipelineClinical.ref_panel_vcf" : "gs://gatk-sv-resources/clinical/reference_panel_v1b/calls/ref_panel_v1b.cleaned.vcf.gz",
-   "GATKSVPipelineClinical.reference_dict" : "gs://broad-dsde-methods-sv/reference/GRCh38/Homo_sapiens_assembly38.dict",
-   "GATKSVPipelineClinical.reference_fasta" : "gs://broad-dsde-methods-sv/reference/GRCh38/Homo_sapiens_assembly38.fasta",
-   "GATKSVPipelineClinical.reference_index" : "gs://broad-dsde-methods-sv/reference/GRCh38/Homo_sapiens_assembly38.fasta.fai",
+   "GATKSVPipelineClinical.reference_dict" : "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+   "GATKSVPipelineClinical.reference_fasta" : "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta",
+   "GATKSVPipelineClinical.reference_index" : "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
    "GATKSVPipelineClinical.rmsk": "gs://gatk-sv-resources/sfaritest/sfariaws/ref/hg38.randomForest_blacklist.withRepMask.bed.gz",
    "GATKSVPipelineClinical.segdups": "gs://gatk-sv-resources/sfaritest/sfariaws/ref/hg38.SD_gaps_Cen_Tel_Heter_Satellite_lumpy.blacklist.sorted.merged.bed.gz",
    "GATKSVPipelineClinical.run_bincov_qc" : true,
