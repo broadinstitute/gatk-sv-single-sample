@@ -24,6 +24,9 @@ workflow Module00a {
     Array[File] bam_or_cram_files
     Array[File]? bam_or_cram_indexes
 
+    # Use only for crams in requester pays buckets
+    Boolean requester_pays_crams = false
+
     # Required for BAF
     Array[File]? gvcfs
     Array[File]? gvcf_indexes
@@ -140,6 +143,7 @@ workflow Module00a {
           cram_file = bam_or_cram_file,
           reference_fasta = reference_fasta,
           reference_index = reference_index,
+          requester_pays = requester_pays_crams,
           samtools_docker = samtools_docker,
           runtime_attr_override = runtime_attr_cram_to_bam
       }
