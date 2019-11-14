@@ -1,6 +1,5 @@
 {
    "GATKSVPipelineClinical.sample_id" : "SM-GN4BI",
-   "GATKSVPipelineClinical.sample_sex" : "2",
    "GATKSVPipelineClinical.batch" : "gatk_sv_clinical_v1b",
    "GATKSVPipelineClinical.bam_or_cram_file" : "gs://fc-dce6617d-8c29-47c3-8da9-ed441f0b7287/Set_4_7_HapMap_samples_3-22-2018/RP-1536/WGS/SM-GN4BI/v1/NA19240_NA19240_1a_SM-GN4BI_v1.cram",
    "GATKSVPipelineClinical.bam_or_cram_index" : "gs://fc-dce6617d-8c29-47c3-8da9-ed441f0b7287/Set_4_7_HapMap_samples_3-22-2018/RP-1536/WGS/SM-GN4BI/v1/NA19240_NA19240_1a_SM-GN4BI_v1.cram.crai",
@@ -45,6 +44,7 @@
    "GATKSVPipelineClinical.pesr_frac" : 0.1,
    "GATKSVPipelineClinical.pesr_svsize" : 0,
    "GATKSVPipelineClinical.preemptible_attempts" : 5,
+   "GATKSVPipelineClinical.qc_definitions": "gs://gatk-sv-resources/clinical/reference_panel_v1b/qc/clinical.qc_definitions.tsv",
    "GATKSVPipelineClinical.ref_copy_number_autosomal_contigs" : 2,
    "GATKSVPipelineClinical.ref_panel_outliers_excluded_list" : "gs://gatk-sv-resources/clinical/reference_panel_v1b/post_filter/ref_panel_v1b.post03_outliers_excluded.samples.list",
    "GATKSVPipelineClinical.ref_panel_del_bed" : "gs://gatk-sv-resources/clinical/reference_panel_v1b/merged_evidence/ref_panel_v1b.DEL.bed.gz",
@@ -55,7 +55,6 @@
    "GATKSVPipelineClinical.reference_index" : "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
    "GATKSVPipelineClinical.rmsk": "gs://gatk-sv-resources/resources/hg38.randomForest_blacklist.withRepMask.bed.gz",
    "GATKSVPipelineClinical.segdups": "gs://gatk-sv-resources/resources/hg38.SD_gaps_Cen_Tel_Heter_Satellite_lumpy.blacklist.sorted.merged.bed.gz",
-   "GATKSVPipelineClinical.run_bincov_qc" : true,
    "GATKSVPipelineClinical.run_vcf_qc" : true,
    "GATKSVPipelineClinical.clean_vcf_min_sr_background_fail_batches": 0.5,
    "GATKSVPipelineClinical.clean_vcf_max_shards_per_chrom" : 100,
