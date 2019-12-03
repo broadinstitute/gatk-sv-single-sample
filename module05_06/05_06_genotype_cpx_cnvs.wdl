@@ -15,6 +15,7 @@ import "05_06_common_mini_tasks.wdl" as MiniTasks
 # across batches on predicted CPX CNVs from 04b
 workflow GenotypeCpxCnvs {
   input {
+    File bin_exclude
     File vcf
     File gt_input_files
     Int n_per_split_small
@@ -57,6 +58,7 @@ workflow GenotypeCpxCnvs {
   scatter (gt_inputs in gt_input_array) {
     call RunDepthGenotypePerBatch.GenotypeCpxCnvsPerBatch as GenotypeBatch {
       input:
+        bin_exclude=bin_exclude,
         cpx_bed=GetCpxCnvIntervals.cpx_cnv_bed,
         batch=gt_inputs[0],
         coverage_file=gt_inputs[1],

@@ -124,64 +124,66 @@ workflow MasterVcfQc {
       runtime_attr_override=runtime_override_plot_qc_vcf_wide
   }
 
-  # Collect external benchmarking vs 1000G
-  call VcfExternalBenchmark as ThousandGBenchmark {
-    input:
-      vcf_stats=MergeVcfwideStatShards.merged_bed_file,
-      prefix=prefix,
-      comparator="1000G_Sudmant",
-      sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      runtime_attr_override=runtime_override_thousand_g_benchmark
-  }
+  if (include_external_benchmarking) {
+    # Collect external benchmarking vs 1000G
+    call VcfExternalBenchmark as ThousandGBenchmark {
+      input:
+        vcf_stats=MergeVcfwideStatShards.merged_bed_file,
+        prefix=prefix,
+        comparator="1000G_Sudmant",
+        sv_pipeline_qc_docker=sv_pipeline_qc_docker,
+        runtime_attr_override=runtime_override_thousand_g_benchmark
+    }
 
-  # Plot external benchmarking vs 1000G
-  call PlotQcExternalBenchmarking as ThousandGPlot {
-    input:
-      benchmarking_tarball=ThousandGBenchmark.benchmarking_results_tarball,
-      prefix=prefix,
-      comparator="1000G_Sudmant",
-      sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      runtime_attr_override=runtime_override_thousand_g_plot
-  }
+    # Plot external benchmarking vs 1000G
+    call PlotQcExternalBenchmarking as ThousandGPlot {
+      input:
+        benchmarking_tarball=ThousandGBenchmark.benchmarking_results_tarball,
+        prefix=prefix,
+        comparator="1000G_Sudmant",
+        sv_pipeline_qc_docker=sv_pipeline_qc_docker,
+        runtime_attr_override=runtime_override_thousand_g_plot
+    }
   
-  # Collect external benchmarking vs ASC
-  call VcfExternalBenchmark as AscBenchmark {
-    input:
-      vcf_stats=MergeVcfwideStatShards.merged_bed_file,
-      prefix=prefix,
-      comparator="ASC_Werling",
-      sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      runtime_attr_override=runtime_override_asc_benchmark
-  }
+    # Collect external benchmarking vs ASC
+    call VcfExternalBenchmark as AscBenchmark {
+      input:
+        vcf_stats=MergeVcfwideStatShards.merged_bed_file,
+        prefix=prefix,
+        comparator="ASC_Werling",
+        sv_pipeline_qc_docker=sv_pipeline_qc_docker,
+        runtime_attr_override=runtime_override_asc_benchmark
+    }
 
-  # Plot external benchmarking vs ASC
-  call PlotQcExternalBenchmarking as AscPlot {
-    input:
-      benchmarking_tarball=AscBenchmark.benchmarking_results_tarball,
-      prefix=prefix,
-      comparator="ASC_Werling",
-      sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      runtime_attr_override=runtime_override_asc_plot
-  }
+    # Plot external benchmarking vs ASC
+    call PlotQcExternalBenchmarking as AscPlot {
+      input:
+        benchmarking_tarball=AscBenchmark.benchmarking_results_tarball,
+        prefix=prefix,
+        comparator="ASC_Werling",
+        sv_pipeline_qc_docker=sv_pipeline_qc_docker,
+        runtime_attr_override=runtime_override_asc_plot
+    }
   
-  # Collect external benchmarking vs HGSV
-  call VcfExternalBenchmark as HgsvBenchmark {
-    input:
-      vcf_stats=MergeVcfwideStatShards.merged_bed_file,
-      prefix=prefix,
-      comparator="HGSV_Chaisson",
-      sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      runtime_attr_override=runtime_override_hgsv_benchmark
-  }
+    # Collect external benchmarking vs HGSV
+    call VcfExternalBenchmark as HgsvBenchmark {
+      input:
+        vcf_stats=MergeVcfwideStatShards.merged_bed_file,
+        prefix=prefix,
+        comparator="HGSV_Chaisson",
+        sv_pipeline_qc_docker=sv_pipeline_qc_docker,
+        runtime_attr_override=runtime_override_hgsv_benchmark
+    }
 
-  # Plot external benchmarking vs HGSV
-  call PlotQcExternalBenchmarking as HgsvPlot {
-    input:
-      benchmarking_tarball=HgsvBenchmark.benchmarking_results_tarball,
-      prefix=prefix,
-      comparator="HGSV_Chaisson",
-      sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      runtime_attr_override=runtime_override_hgsv_plot
+    # Plot external benchmarking vs HGSV
+    call PlotQcExternalBenchmarking as HgsvPlot {
+      input:
+        benchmarking_tarball=HgsvBenchmark.benchmarking_results_tarball,
+        prefix=prefix,
+        comparator="HGSV_Chaisson",
+        sv_pipeline_qc_docker=sv_pipeline_qc_docker,
+        runtime_attr_override=runtime_override_hgsv_plot
+    }
   }
 
   # Collect per-sample VID lists
@@ -385,7 +387,7 @@ task PlotQcVcfWide {
     # Plot VCF-wide distributions
     /opt/sv-pipeline/scripts/vcf_qc/plot_sv_vcf_distribs.R \
       -N $( cat ~{samples_list} | sort | uniq | wc -l ) \
-      -S /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+      -S /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
       ~{vcf_stats} \
       plotQC_vcfwide_output/
 
@@ -444,7 +446,7 @@ task VcfExternalBenchmark {
     # Run benchmarking script
     /opt/sv-pipeline/scripts/vcf_qc/collectQC.external_benchmarking.sh \
       ~{vcf_stats} \
-      /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+      /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
       ~{comparator} \
       collectQC_benchmarking_~{comparator}_output/
     
@@ -566,7 +568,7 @@ task PlotQcPerSample {
 
     # Plot per-sample distributions
     /opt/sv-pipeline/scripts/vcf_qc/plot_sv_perSample_distribs.R \
-      -S /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+      -S /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
       ~{vcf_stats} \
       ~{samples_list} \
       ~{prefix}_perSample/ \
@@ -647,7 +649,7 @@ task PlotQcPerFamily {
       
       # Run family analysis
       /opt/sv-pipeline/scripts/vcf_qc/analyze_fams.R \
-        -S /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+        -S /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
         ~{vcf_stats} \
         cleaned.fam \
         ~{prefix}_perSample/ \
@@ -728,7 +730,7 @@ task PlotQcPerSampleBenchmarking {
       -c ~{comparison_set_name} \
       results/ \
       ~{samples_list} \
-      /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+      /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
       ~{prefix}.~{comparison_set_name}_perSample_benchmarking_plots/
 
     # Prepare output
@@ -750,9 +752,9 @@ task SanitizeOutputs {
     File vcf_stats
     File vcf_stats_idx
     File plot_qc_vcfwide_tarball
-    File plot_qc_external_benchmarking_thousand_g_tarball
-    File plot_qc_external_benchmarking_asc_tarball
-    File plot_qc_external_benchmarking_hgsv_tarball
+    File? plot_qc_external_benchmarking_thousand_g_tarball
+    File? plot_qc_external_benchmarking_asc_tarball
+    File? plot_qc_external_benchmarking_hgsv_tarball
     File collect_qc_per_sample_tarball
     File plot_qc_per_sample_tarball
     File plot_qc_per_family_tarball
@@ -831,32 +833,38 @@ task SanitizeOutputs {
     cp plotQC_vcfwide_output/supporting_plots/vcf_summary_plots/* \
       ~{prefix}_SV_VCF_QC_output/plots/supplementary_plots/vcf_summary_plots/
 
-    # Process 1000G benchmarking stats & plots
-    tar -xzvf ~{plot_qc_external_benchmarking_thousand_g_tarball}
-    cp collectQC_benchmarking_1000G_Sudmant_output/data/1000G_Sudmant.SV.ALL.overlaps.bed.gz* \
-      ~{prefix}_SV_VCF_QC_output/data/
-    cp collectQC_benchmarking_1000G_Sudmant_output/plots/1000G_Sudmant_ALL_samples/main_plots/VCF_QC.1000G_Sudmant_ALL.callset_benchmarking.png \
-      ~{prefix}_SV_VCF_QC_output/plots/main_plots/
-    cp -r collectQC_benchmarking_1000G_Sudmant_output/plots/* \
-      ~{prefix}_SV_VCF_QC_output/plots/supplementary_plots/1000G_Sudmant_benchmarking_plots/
+    if ~{defined(plot_qc_external_benchmarking_thousand_g_tarball)}; then
+      # Process 1000G benchmarking stats & plots
+      tar -xzvf ~{plot_qc_external_benchmarking_thousand_g_tarball}
+      cp collectQC_benchmarking_1000G_Sudmant_output/data/1000G_Sudmant.SV.ALL.overlaps.bed.gz* \
+        ~{prefix}_SV_VCF_QC_output/data/
+      cp collectQC_benchmarking_1000G_Sudmant_output/plots/1000G_Sudmant_ALL_samples/main_plots/VCF_QC.1000G_Sudmant_ALL.callset_benchmarking.png \
+        ~{prefix}_SV_VCF_QC_output/plots/main_plots/
+      cp -r collectQC_benchmarking_1000G_Sudmant_output/plots/* \
+        ~{prefix}_SV_VCF_QC_output/plots/supplementary_plots/1000G_Sudmant_benchmarking_plots/
+    fi
 
-    # Process ASC benchmarking stats & plots
-    tar -xzvf ~{plot_qc_external_benchmarking_asc_tarball}
-    cp collectQC_benchmarking_ASC_Werling_output/data/ASC_Werling.SV.ALL.overlaps.bed.gz* \
-      ~{prefix}_SV_VCF_QC_output/data/
-    cp collectQC_benchmarking_ASC_Werling_output/plots/ASC_Werling_ALL_samples/main_plots/VCF_QC.ASC_Werling_ALL.callset_benchmarking.png \
-      ~{prefix}_SV_VCF_QC_output/plots/main_plots/
-    cp -r collectQC_benchmarking_ASC_Werling_output/plots/* \
-      ~{prefix}_SV_VCF_QC_output/plots/supplementary_plots/ASC_Werling_benchmarking_plots/
+    if ~{defined(plot_qc_external_benchmarking_asc_tarball)}; then
+      # Process ASC benchmarking stats & plots
+      tar -xzvf ~{plot_qc_external_benchmarking_asc_tarball}
+      cp collectQC_benchmarking_ASC_Werling_output/data/ASC_Werling.SV.ALL.overlaps.bed.gz* \
+        ~{prefix}_SV_VCF_QC_output/data/
+      cp collectQC_benchmarking_ASC_Werling_output/plots/ASC_Werling_ALL_samples/main_plots/VCF_QC.ASC_Werling_ALL.callset_benchmarking.png \
+        ~{prefix}_SV_VCF_QC_output/plots/main_plots/
+      cp -r collectQC_benchmarking_ASC_Werling_output/plots/* \
+        ~{prefix}_SV_VCF_QC_output/plots/supplementary_plots/ASC_Werling_benchmarking_plots/
+    fi
 
-    # Process HGSV benchmarking stats & plots
-    tar -xzvf ~{plot_qc_external_benchmarking_hgsv_tarball}
-    cp collectQC_benchmarking_HGSV_Chaisson_output/data/HGSV_Chaisson.SV.ALL.overlaps.bed.gz* \
-      ~{prefix}_SV_VCF_QC_output/data/
-    cp collectQC_benchmarking_HGSV_Chaisson_output/plots/HGSV_Chaisson_ALL_samples/main_plots/VCF_QC.HGSV_Chaisson_ALL.callset_benchmarking.png \
-      ~{prefix}_SV_VCF_QC_output/plots/main_plots/
-    cp -r collectQC_benchmarking_HGSV_Chaisson_output/plots/* \
-      ~{prefix}_SV_VCF_QC_output/plots/supplementary_plots/HGSV_Chaisson_benchmarking_plots/
+    if ~{defined(plot_qc_external_benchmarking_hgsv_tarball)}; then
+      # Process HGSV benchmarking stats & plots
+      tar -xzvf ~{plot_qc_external_benchmarking_hgsv_tarball}
+      cp collectQC_benchmarking_HGSV_Chaisson_output/data/HGSV_Chaisson.SV.ALL.overlaps.bed.gz* \
+        ~{prefix}_SV_VCF_QC_output/data/
+      cp collectQC_benchmarking_HGSV_Chaisson_output/plots/HGSV_Chaisson_ALL_samples/main_plots/VCF_QC.HGSV_Chaisson_ALL.callset_benchmarking.png \
+        ~{prefix}_SV_VCF_QC_output/plots/main_plots/
+      cp -r collectQC_benchmarking_HGSV_Chaisson_output/plots/* \
+        ~{prefix}_SV_VCF_QC_output/plots/supplementary_plots/HGSV_Chaisson_benchmarking_plots/
+    fi
 
     # Process per-sample stats
     tar -xzvf ~{collect_qc_per_sample_tarball}

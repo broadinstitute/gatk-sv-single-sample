@@ -16,6 +16,7 @@ import "05_06_common_mini_tasks.wdl" as MiniTasks
 
 workflow GenotypeCpxCnvsPerBatch {
   input {
+    File bin_exclude
     File cpx_bed
     File rd_depth_sep_cutoff
     Int n_per_split_small
@@ -52,6 +53,7 @@ workflow GenotypeCpxCnvsPerBatch {
   scatter (split_bed_file in flatten([SplitBedBySize.small_beds, SplitBedBySize.large_beds])) {
     call RdTestGenotype as RdGenotype {
       input:
+        bin_exclude=bin_exclude,
         bed=split_bed_file,
         coverage_file=coverage_file,
         coverage_file_idx=coverage_file_idx,
@@ -178,6 +180,7 @@ task RdTestGenotype {
     File? coverage_file_idx
     File fam_file
     File samples_list
+    File bin_exclude
     File gt_cutoffs
     Int n_bins
     String prefix
@@ -248,7 +251,7 @@ task RdTestGenotype {
       -w ~{samples_list} \
       -i ~{n_bins} \
       -r ~{gt_cutoffs} \
-      -y /opt/RdTest/bin_exclude.bed.gz \
+      -y ~{bin_exclude} \
       -g TRUE
 
     if [ -f "~{prefix}.geno" ] && [ -f "~{prefix}.gq" ] ; then

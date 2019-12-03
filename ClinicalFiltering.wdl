@@ -336,10 +336,12 @@ task FilterVcfWithReferencePanelCalls {
   }
 }
 
-task ResetHighSRBackgroundFilter {
+task ResetFilter {
   input {
     File clinical_vcf
     File clinical_vcf_idx
+    String filter_to_reset
+    String info_header_line
 
     String sv_mini_docker
     RuntimeAttr? runtime_attr_override
@@ -356,7 +358,7 @@ task ResetHighSRBackgroundFilter {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
   String filebase = basename(clinical_vcf, ".vcf.gz")
-  String outfile = "~{filebase}.reset_filters.vcf.gz"
+  String outfile = "~{filebase}.reset_~{filter_to_reset}_filter.vcf.gz"
 
   output {
     File out = "~{outfile}"
@@ -366,17 +368,17 @@ task ResetHighSRBackgroundFilter {
 
   set -euo pipefail
 
-  echo '##INFO=<ID=HIGH_SR_BACKGROUND,Number=0,Type=Flag,Description="Sites with high split read background">' > header.txt
+  echo '~{info_header_line}' > header.txt
 
-  bcftools filter -i 'FILTER ~ "HIGH_SR_BACKGROUND"' ~{clinical_vcf} | bgzip -c > hsrb.vcf.gz
+  bcftools filter -i 'FILTER ~ "~{filter_to_reset}"' ~{clinical_vcf} | bgzip -c > hsrb.vcf.gz
   tabix hsrb.vcf.gz
 
   bcftools annotate \
     -k \
     -a hsrb.vcf.gz \
-    -m HIGH_SR_BACKGROUND \
+    -m ~{filter_to_reset} \
     -h header.txt \
-    -x FILTER/HIGH_SR_BACKGROUND \
+    -x FILTER/~{filter_to_reset} \
     ~{clinical_vcf} | bgzip -c > ~{outfile}
 
   tabix ~{outfile}

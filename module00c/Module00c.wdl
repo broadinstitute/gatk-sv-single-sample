@@ -17,6 +17,7 @@ import "MedianCov.wdl" as mc
 import "PESRPreprocessing.wdl" as pp
 import "GermlineCNVCase.wdl" as gcnv
 import "PloidyEstimation.wdl" as pe
+import "tinyresolve.wdl" as tiny
 
 # Batch-level workflow:
 #   - Merge sample evidence data into a single batch
@@ -44,6 +45,7 @@ workflow Module00c {
     File? ref_panel_bincov_matrix
     Array[File]? BAF_files         # Required for MatrixQC
     Array[File]+ PE_files
+    Array[File]+ PE_files_idx
     Array[File]? ref_panel_PE_files
     Array[File]+ SR_files
     Array[File]? ref_panel_SR_files
@@ -120,7 +122,10 @@ workflow Module00c {
     File cnmops_chrom_file
     File cnmops_blacklist
     File cnmops_allo_file
-
+    # Resolve files
+    File cytoband
+    File cytoband_idx
+    File mei_bed
     # QC files
     Int matrix_qc_distance
 
@@ -336,7 +341,20 @@ workflow Module00c {
       sv_pipeline_docker = sv_pipeline_docker,
       runtime_attr = preprocess_calls_runtime_attr
   }
-
+  if (defined(manta_vcfs)) {
+      call tiny.TinyResolve as TinyResolve {
+        input:
+          samples = samples,
+          manta_vcfs = select_first([PreprocessPESR.std_manta_vcf]),
+          cytoband=cytoband,
+          cytoband_idx=cytoband_idx,
+          discfile=PE_files,
+          discfile_idx=PE_files_idx,
+          mei_bed=mei_bed,
+          sv_pipeline_docker = sv_pipeline_docker,
+          runtime_attr = preprocess_calls_runtime_attr
+      }
+  }
   if (run_matrix_qc) {
     call mqc.MatrixQC as MatrixQC {
       input: 

@@ -16,6 +16,7 @@ import "05_06_common_mini_tasks.wdl" as MiniTasks
 # across batches on predicted CPX CNVs from 04b
 workflow ScatterCpxGenotyping {
   input {
+    File bin_exclude
     File vcf
     Int n_master_vcf_shards
     Int n_master_min_vars_per_vcf_shard
@@ -62,6 +63,7 @@ workflow ScatterCpxGenotyping {
     # Run genotyping
     call GenotypeCpx.GenotypeCpxCnvs as GenotypeShard {
       input:
+        bin_exclude=bin_exclude,
         vcf=shard,
         gt_input_files=gt_input_files,
         n_per_split_large=n_per_split_large,

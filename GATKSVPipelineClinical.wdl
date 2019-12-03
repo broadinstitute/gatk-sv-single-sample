@@ -268,6 +268,9 @@ workflow GATKSVPipelineClinical {
     File SR_metrics
     File PE_metrics
 
+    File bin_exclude
+    File bin_exclude_idx
+
     # Common
     RuntimeAttr? runtime_attr_split_vcf
     RuntimeAttr? runtime_attr_merge_counts
@@ -320,6 +323,8 @@ workflow GATKSVPipelineClinical {
     File? ref_panel_outlier_samples_list
     Int? clean_vcf_random_seed
     Boolean clean_vcf_include_external_benchmarking
+
+    String? sv_pipeline_docker_override_0506
 
     RuntimeAttr? runtime_override_update_sr_list
     RuntimeAttr? runtime_override_merge_pesr_depth
@@ -411,6 +416,10 @@ workflow GATKSVPipelineClinical {
       counts=select_first([Module00a.coverage_counts, emptyFileArray]),
       ref_panel_bincov_matrix=ref_panel_bincov_matrix,
       PE_files=select_first([Module00a.pesr_disc, emptyFileArray]),
+      PE_files_idx=select_first([Module00a.pesr_disc_index, emptyFileArray]),
+      cytoband=cytobands,
+      cytoband_idx=cytobands_idx,
+      mei_bed=mei_bed,
       ref_panel_PE_files=ref_pesr_disc_files,
       SR_files=select_first([Module00a.pesr_split, emptyFileArray]),
       ref_panel_SR_files=ref_pesr_split_files,
@@ -652,6 +661,8 @@ workflow GATKSVPipelineClinical {
       genotype_depth_depth_sepcutoff=genotype_depth_depth_sepcutoff,
       SR_metrics=SR_metrics,
       PE_metrics=PE_metrics,
+      bin_exclude=bin_exclude,
+      bin_exclude_idx=bin_exclude_idx,
       sv_mini_docker=sv_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
       sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
@@ -791,6 +802,8 @@ workflow GATKSVPipelineClinical {
       cytobands=cytobands,
       cytobands_idx=cytobands_idx,
 
+      bin_exclude=bin_exclude,
+
       discfile_list=MergedPeListFile.list_file,
       discfile_idx_list=MergedPeIdxListFile.list_file,
       bincov_list=MergedBincovListFile.list_file,
@@ -822,7 +835,7 @@ workflow GATKSVPipelineClinical {
       random_seed=clean_vcf_random_seed,
       include_external_benchmarking=clean_vcf_include_external_benchmarking,
 
-      sv_pipeline_docker=sv_pipeline_docker,
+      sv_pipeline_docker=select_first([sv_pipeline_docker_override_0506, sv_pipeline_docker]),
       sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       sv_base_mini_docker=sv_mini_docker,
@@ -850,7 +863,7 @@ workflow GATKSVPipelineClinical {
 
   call ClinicalFiltering.GetUniqueNonGenotypedDepthCalls as GetUniqueNonGenotypedDepthCalls {
     input:
-      vcf_gz=FilterVcfDepthLt5kb.out,
+      vcf_gz=Module0506.final_04b_vcf,
       sample_id=sample_id,
       ref_panel_dels=ref_panel_del_bed,
       ref_panel_dups=ref_panel_dup_bed,
@@ -871,12 +884,23 @@ workflow GATKSVPipelineClinical {
       sv_mini_docker=sv_mini_docker
   }
 
-  call ClinicalFiltering.ResetHighSRBackgroundFilter as ResetHighSRBackgroundFilter {
+  call ClinicalFiltering.ResetFilter as ResetHighSRBackgroundFilter {
     input:
       clinical_vcf=FilterVcfWithReferencePanelCalls.out,
       clinical_vcf_idx=FilterVcfWithReferencePanelCalls.out_idx,
+      filter_to_reset="HIGH_SR_BACKGROUND",
+      info_header_line='##INFO=<ID=HIGH_SR_BACKGROUND,Number=0,Type=Flag,Description="Sites with high split read background">',
       sv_mini_docker=sv_mini_docker
   }
+
+  call ClinicalFiltering.ResetFilter as ResetBothsidesSupportFilter {
+      input:
+        clinical_vcf=FilterVcfWithReferencePanelCalls.out,
+        clinical_vcf_idx=FilterVcfWithReferencePanelCalls.out_idx,
+        filter_to_reset="BOTHSIDES_SUPPORT",
+        info_header_line='##INFO=<ID=BOTHSIDES_SUPPORT,Number=0,Type=Flag,Description="Sites with split read support at both breakpoints">',
+        sv_mini_docker=sv_mini_docker
+    }
 
   call ClinicalFiltering.FinalVCFCleanup as FinalVCFCleanup {
     input:
