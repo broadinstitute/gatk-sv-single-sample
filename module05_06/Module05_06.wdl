@@ -19,17 +19,17 @@ version 1.0
 
 #Imports:
 # based on snapshot 11
-import "05_06_vcf_cluster_single_chrom.wdl" as VcfClusterContig
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module05_06/05_06_vcf_cluster_single_chrom.wdl" as VcfClusterContig
 # based on snapshot 28
-import "05_06_resolve_complex_sv.wdl" as ResolveComplexContig
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module05_06/05_06_resolve_complex_sv.wdl" as ResolveComplexContig
 # based on snapshot 12
-import "05_06_scatter_cpx_genotyping.wdl" as GenotypeComplexContig
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module05_06/05_06_scatter_cpx_genotyping.wdl" as GenotypeComplexContig
 # based on snapshot 93
-import "05_06_clean_vcf.wdl" as CleanVcfContig
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module05_06/05_06_clean_vcf.wdl" as CleanVcfContig
 # based on snapshot 75
-import "05_06_master_vcf_qc.wdl" as VcfQc
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module05_06/05_06_master_vcf_qc.wdl" as VcfQc
 
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module05_06/05_06_common_mini_tasks.wdl" as MiniTasks
 
 workflow Module05_06 {
   input {

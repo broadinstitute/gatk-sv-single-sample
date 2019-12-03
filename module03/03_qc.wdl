@@ -6,7 +6,7 @@
 
 ##########################################################################################
 
-import "master_SV_VCF_QC.wdl" as vcf_qc
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module03/master_SV_VCF_QC.wdl" as vcf_qc
 
 workflow variant_filtering_qc {
 

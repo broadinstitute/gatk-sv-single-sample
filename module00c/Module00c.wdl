@@ -6,17 +6,17 @@ version 1.0
 
 ##########################################################################################
 
-import "Structs.wdl"
-import "BatchEvidenceMerging.wdl" as bem
-import "CNMOPS.wdl" as cnmops
-import "CollectCoverage.wdl" as cov
-import "DepthPreprocessing.wdl" as dpn
-import "MakeBincovMatrix.wdl" as mbm
-import "MatrixQC.wdl" as mqc
-import "MedianCov.wdl" as mc
-import "PESRPreprocessing.wdl" as pp
-import "GermlineCNVCase.wdl" as gcnv
-import "PloidyEstimation.wdl" as pe
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/BatchEvidenceMerging.wdl" as bem
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/CNMOPS.wdl" as cnmops
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/CollectCoverage.wdl" as cov
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/DepthPreprocessing.wdl" as dpn
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/MakeBincovMatrix.wdl" as mbm
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/MatrixQC.wdl" as mqc
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/MedianCov.wdl" as mc
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/PESRPreprocessing.wdl" as pp
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/GermlineCNVCase.wdl" as gcnv
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00c/PloidyEstimation.wdl" as pe
 
 # Batch-level workflow:
 #   - Merge sample evidence data into a single batch

@@ -8,8 +8,8 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "05_06_structs.wdl"
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module05_06/05_06_structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module05_06/05_06_common_mini_tasks.wdl" as MiniTasks
 
 # Workflow to shard a filtered vcf & run vcfcluster (sub-sub-sub workflow)
 workflow ShardedCluster {

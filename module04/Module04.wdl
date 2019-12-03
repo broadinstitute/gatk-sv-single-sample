@@ -8,10 +8,10 @@
 
 version 1.0
 
-import "GenotypePESRPart1.wdl" as gp1
-import "GenotypePESRPart2.wdl" as gp2
-import "GenotypeDepthPart1.wdl" as gd1
-import "GenotypeDepthPart2.wdl" as gd2
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module04/GenotypePESRPart1.wdl" as gp1
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module04/GenotypePESRPart2.wdl" as gp2
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module04/GenotypeDepthPart1.wdl" as gd1
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module04/GenotypeDepthPart2.wdl" as gd2
 
 workflow Module04 {
   input {

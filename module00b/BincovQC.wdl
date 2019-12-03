@@ -23,7 +23,7 @@
 
 version 1.0
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.2-test/module00b/Structs.wdl"
 
 # Workflow to run binCov QC on a single sample
 workflow BincovQC {
