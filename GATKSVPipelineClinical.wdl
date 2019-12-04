@@ -895,8 +895,8 @@ workflow GATKSVPipelineClinical {
 
   call ClinicalFiltering.ResetFilter as ResetBothsidesSupportFilter {
       input:
-        clinical_vcf=FilterVcfWithReferencePanelCalls.out,
-        clinical_vcf_idx=FilterVcfWithReferencePanelCalls.out_idx,
+        clinical_vcf=ResetHighSRBackgroundFilter.out,
+        clinical_vcf_idx=ResetHighSRBackgroundFilter.out_idx,
         filter_to_reset="BOTHSIDES_SUPPORT",
         info_header_line='##INFO=<ID=BOTHSIDES_SUPPORT,Number=0,Type=Flag,Description="Sites with split read support at both breakpoints">',
         sv_mini_docker=sv_mini_docker
@@ -904,8 +904,8 @@ workflow GATKSVPipelineClinical {
 
   call ClinicalFiltering.FinalVCFCleanup as FinalVCFCleanup {
     input:
-      clinical_vcf=ResetHighSRBackgroundFilter.out,
-      clinical_vcf_idx=ResetHighSRBackgroundFilter.out_idx,
+      clinical_vcf=ResetBothsidesSupportFilter.out,
+      clinical_vcf_idx=ResetBothsidesSupportFilter.out_idx,
       sv_mini_docker=sv_mini_docker
   }
 

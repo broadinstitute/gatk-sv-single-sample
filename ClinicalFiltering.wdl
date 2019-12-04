@@ -30,7 +30,7 @@ task FilterVcfBySampleGenotypeAndAddEvidenceAnnotation {
   }
   command <<<
     set -euo pipefail
-    sampleIndex=`gzip -cd ~{vcf_gz} | grep CHROM | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
+    sampleIndex=`gzip -cd ~{vcf_gz} | grep '^#CHROM' | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
 
     bcftools query -f "%CHROM\t%POS\t%REF\t%ALT\t~{evidence}\n" ~{vcf_gz} | bgzip -c > evidence_annotations.tab.gz
     tabix -s1 -b2 -e2 evidence_annotations.tab.gz
@@ -137,10 +137,10 @@ task GetUniqueNonGenotypedDepthCalls {
   }
   command <<<
     set -euo pipefail
-    sampleIndex=`gzip -cd ~{vcf_gz} | grep CHROM | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
+    sampleIndex=`gzip -cd ~{vcf_gz} | grep '^#CHROM' | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
 
     bcftools filter \
-        -i "FILTER == \"PASS\" && GT[${sampleIndex}]!=\"alt\" && INFO/ALGORITHMS[*] == \"depth\"" \
+        -i "FILTER == \"PASS\" && GT[${sampleIndex}]!=\"alt\" && INFO/ALGORITHMS[*] == \"depth\" && INFO/SVLEN >= 10000" \
         ~{vcf_gz} | bgzip -c > pass_depth_not_alt.vcf.gz
 
     bgzip -cd pass_depth_not_alt.vcf.gz | grep '#' > header.txt
