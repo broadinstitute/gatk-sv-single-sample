@@ -8,7 +8,7 @@
 
 version 1.0
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.3-dockstore_release/module00b/Structs.wdl"
 
 workflow Ploidy {
   input {

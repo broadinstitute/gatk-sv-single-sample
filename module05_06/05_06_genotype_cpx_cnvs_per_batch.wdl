@@ -9,7 +9,7 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.3-dockstore_release/module05_06/05_06_common_mini_tasks.wdl" as MiniTasks
 
 # Workflow to perform depth-based genotyping per batch
 # on predicted CPX CNVs from 04b

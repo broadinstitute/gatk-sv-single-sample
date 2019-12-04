@@ -4,7 +4,7 @@
 
 version 1.0
 
-import "GermlineCNVTasks.wdl" as CNVTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.3-dockstore_release/gcnv/GermlineCNVTasks.wdl" as CNVTasks
 
 workflow CNVGermlineCohortWorkflow {
     input {

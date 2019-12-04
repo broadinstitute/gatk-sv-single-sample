@@ -8,8 +8,8 @@
 
 version 1.0
 
-import "PESRClustering.wdl" as pesr
-import "DepthClustering.wdl" as depth
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.3-dockstore_release/module01/PESRClustering.wdl" as pesr
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.3-dockstore_release/module01/DepthClustering.wdl" as depth
 
 workflow Module01 {
   input {
