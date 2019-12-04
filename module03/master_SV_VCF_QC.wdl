@@ -378,7 +378,7 @@ task plotQC_vcfwide {
     # Plot VCF-wide distributions
     /opt/sv-pipeline/scripts/vcf_qc/plot_sv_vcf_distribs.R \
       -N $( cat ${samples_list} | sort | uniq | wc -l ) \
-      -S /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+      -S /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
       ${vcfstats} \
       plotQC_vcfwide_output/
 
@@ -453,7 +453,7 @@ task plotQC_perSample {
 
     # Plot per-sample distributions
     /opt/sv-pipeline/scripts/vcf_qc/plot_sv_perSample_distribs.R \
-      -S /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+      -S /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
       ${vcfstats} \
       ${samples_list} \
       ${prefix}_perSample/ \
@@ -509,7 +509,7 @@ task plotQC_perFamily {
 
       # Run family analysis
       /opt/sv-pipeline/scripts/vcf_qc/analyze_fams.R \
-        -S /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+        -S /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
         ${vcfstats} \
         cleaned.fam \
         ${prefix}_perSample/ \
@@ -567,7 +567,7 @@ task plotQC_perSample_benchmarking {
       -c ${comparison_set_name} \
       results/ \
       ${samples_list} \
-      /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+      /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
       ${prefix}.${comparison_set_name}_perSample_benchmarking_plots/
 
     # Prepare output

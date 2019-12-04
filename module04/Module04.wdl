@@ -11,11 +11,11 @@ version 1.0
 import "GenotypePESRPart1.wdl" as gp1
 import "GenotypePESRPart2.wdl" as gp2
 import "GenotypeDepthPart1.wdl" as gd1
-import "GenotypeDepthPart2.wdl" as gd2
-
+import "GenotypeDepthPart2_regeno.wdl" as gd2_r
+import "Tasks04.wdl" as tasks04
 workflow Module04 {
   input {
-    File batch_pesr_vcf
+    File bin_exclude
     File batch_depth_vcf
     File cohort_pesr_vcf
     File cohort_depth_vcf
@@ -23,6 +23,8 @@ workflow Module04 {
     Int n_per_split
 
     Array[String] samples   # post-exclusion samples list
+    File bin_exclude_idx
+    File batch_pesr_vcf
     File coveragefile       # batch coverage file
     File medianfile         # post-exclusion batch median file
     File famfile            # post-exclusion batch famfile
@@ -33,7 +35,8 @@ workflow Module04 {
     File? pesr_blacklist    # Required unless skipping training
     File splitfile
     String? reference_build  #hg19 or hg38, Required unless skipping training
-
+    File? cohort_combined_bed
+    File? cohort_sort
     # If all specified, training will be skipped (for clinical pipeline)
     File? genotype_pesr_pesr_sepcutoff
     File? genotype_pesr_depth_sepcutoff
@@ -41,6 +44,7 @@ workflow Module04 {
     File? genotype_depth_depth_sepcutoff
     File? SR_metrics
     File? PE_metrics
+
 
     String sv_mini_docker
     String sv_pipeline_docker
@@ -93,8 +97,7 @@ workflow Module04 {
   }
 
   Boolean single_sample_mode = defined(genotype_pesr_pesr_sepcutoff) && defined(genotype_pesr_depth_sepcutoff) && defined(genotype_depth_depth_sepcutoff) && defined(SR_metrics) && defined(PE_metrics)
-
-  call AddBatchSamples as AddBatchSamplesPESR {
+  call tasks04.AddBatchSamples as AddBatchSamplesPESR {
     input:
       batch_vcf = batch_pesr_vcf,
       cohort_vcf = cohort_pesr_vcf,
@@ -103,7 +106,7 @@ workflow Module04 {
       runtime_attr_override = runtime_attr_add_batch
   }
 
-  call AddBatchSamples as AddBatchSamplesDepth {
+  call tasks04.AddBatchSamples as AddBatchSamplesDepth {
     input:
       batch_vcf = batch_depth_vcf,
       cohort_vcf = cohort_depth_vcf,
@@ -115,6 +118,8 @@ workflow Module04 {
   if (!single_sample_mode) {
     call gp1.GenotypePESRPart1 as GenotypePESRPart1 {
       input:
+        bin_exclude=bin_exclude,
+        bin_exclude_idx=bin_exclude_idx,
         samples = samples,
         pesr_blacklist = select_first([pesr_blacklist]),
         discfile = discfile,
@@ -153,6 +158,8 @@ workflow Module04 {
 
   call gp2.GenotypePESRPart2 as GenotypePESRPart2 {
     input:
+      bin_exclude=bin_exclude,
+      bin_exclude_idx=bin_exclude_idx,
       samples = samples,
       discfile = discfile,
       PE_metrics = select_first([PE_metrics, GenotypePESRPart1.PE_metrics]),
@@ -188,6 +195,8 @@ workflow Module04 {
   if (!single_sample_mode) {
     call gd1.GenotypeDepthPart1 as GenotypeDepthPart1 {
       input:
+        bin_exclude=bin_exclude,
+        bin_exclude_idx=bin_exclude_idx,
         samples = samples,
         n_RD_genotype_bins = n_RD_genotype_bins,
         batch_vcf = batch_depth_vcf,
@@ -211,9 +220,10 @@ workflow Module04 {
         runtime_attr_merge_genotypes = runtime_attr_merge_genotypes
     }
   }
-
-  call gd2.GenotypeDepthPart2 as GenotypeDepthPart2 {
+  call gd2_r.GenotypeDepthPart2 as GenotypeDepthPart2 {
     input:
+      bin_exclude=bin_exclude,
+      bin_exclude_idx=bin_exclude_idx,
       samples = samples,
       n_RdTest_bins = n_RD_genotype_bins,
       medianfile = medianfile,
@@ -224,6 +234,8 @@ workflow Module04 {
       coveragefile = coveragefile,
       n_per_split = n_per_split,
       famfile = famfile,
+      cohort_combined_bed=cohort_combined_bed,
+      cohort_sort=cohort_sort,
       sv_mini_docker = sv_mini_docker,
       sv_pipeline_docker = sv_pipeline_docker,
       sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
@@ -233,8 +245,7 @@ workflow Module04 {
       runtime_attr_integrate_depth_gq = runtime_attr_integrate_depth_gq,
       runtime_attr_add_genotypes = runtime_attr_add_genotypes,
       runtime_attr_concat_vcfs = runtime_attr_concat_vcfs
-  }
-
+    }
   output {
     File sr_bothside_pass = GenotypePESRPart2.bothside_pass
     File sr_background_fail = GenotypePESRPart2.background_fail
@@ -251,45 +262,8 @@ workflow Module04 {
     File genotyped_depth_vcf_index = GenotypeDepthPart2.genotyped_vcf_index
     File genotyped_pesr_vcf = GenotypePESRPart2.genotyped_vcf
     File genotyped_pesr_vcf_index = GenotypePESRPart2.genotyped_vcf_index
+    File? regeno_depth = GenotypeDepthPart2.regeno_list
   }
 }
 
-task AddBatchSamples {
-  input {
-    File batch_vcf
-    File cohort_vcf
-    String prefix
-    String sv_pipeline_docker
-    RuntimeAttr? runtime_attr_override
-  }
 
-  RuntimeAttr default_attr = object {
-    cpu_cores: 1,
-    mem_gb: 3.75,
-    disk_gb: 10,
-    boot_disk_gb: 10,
-    preemptible_tries: 3,
-    max_retries: 1
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
-
-  output {
-    File updated_vcf = "${prefix}.vcf.gz"
-  }
-  command <<<
-
-    set -euo pipefail
-    /opt/sv-pipeline/04_variant_resolution/scripts/add_batch_samples.py ~{batch_vcf} ~{cohort_vcf} ~{prefix}.vcf
-    bgzip ~{prefix}.vcf
-  
-  >>>
-  runtime {
-    cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
-    memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
-    disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_pipeline_docker
-    preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
-  }
-}

@@ -46,7 +46,7 @@ task benchmark_vcf {
     # Run benchmarking script
     /opt/sv-pipeline/scripts/vcf_qc/collectQC.external_benchmarking.sh \
     ${vcfstats} \
-    /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+    /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
     ${comparator} \
     collectQC_benchmarking_${comparator}_output/
     

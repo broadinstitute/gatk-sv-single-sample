@@ -188,7 +188,7 @@ task JoinContigFromRemoteVcfs {
       fi
       BATCH_VCF="$BATCH.~{contig}.vcf"
       BATCH_VCF=${BATCH_VCF//[[:space:]]/_}
-      tabix -h "$TABIX_VCF" "~{contig}:0-300000000" > "$BATCH_VCF"
+      tabix -h "$TABIX_VCF" "~{contig}:0-300000000"|sed "s/AN=[0-9]*;//g"|sed "s/AC=[0-9]*;//g" > "$BATCH_VCF"
       bgzip -f "$BATCH_VCF"
       if [ $INDEX_PRESENT == 0 ]; then
         rm $TABIX_VCF

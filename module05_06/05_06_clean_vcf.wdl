@@ -17,6 +17,7 @@ workflow CleanVcf {
     File fam_file
     String prefix
     Int max_shards_per_chrom_step1
+    File bothsides_pass_list
     Int min_records_per_shard_step1
     Int samples_per_step2_shard
     File? outlier_samples_list
@@ -64,6 +65,7 @@ workflow CleanVcf {
         background_list=background_list,
         fam_file=fam_file,
         sv_pipeline_docker=sv_pipeline_docker,
+        bothsides_pass_list=bothsides_pass_list,
         runtime_attr_override=runtime_override_clean_vcf_1a
     }
   }
@@ -205,6 +207,7 @@ task CleanVcf1a {
     File background_list
     File fam_file
     String sv_pipeline_docker
+    File bothsides_pass_list
     RuntimeAttr? runtime_attr_override
   }
 
@@ -238,12 +241,17 @@ task CleanVcf1a {
     set -eu -o pipefail
     
     /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1.sh ~{vcf} ~{background_list} ~{fam_file}
+    /opt/sv-pipeline/04_variant_resolution/scripts/add_bothsides_support_filter.py \
+      --bgzip \
+      --outfile int.w_bothsides.vcf.gz \
+      int.vcf.gz \
+      ~{bothsides_pass_list}
   >>>
 
   output {
     File whitelist="whitelist.txt"
     File sex="sexchr.revise.txt"
-    File intermediate_vcf="int.vcf.gz"
+    File intermediate_vcf="int.w_bothsides.vcf.gz"
   }
 }
 

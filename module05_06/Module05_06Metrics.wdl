@@ -35,7 +35,7 @@ workflow Module05_06Metrics {
       baseline_vcf = baseline_cleaned_vcf,
       samples = samples,
       prefix = "cleaned",
-      types = "DEL,DUP,INS,INV,CTX,MCNV,CPX,BND",
+      types = "DEL,DUP,INS,INV,CTX,CNV,CPX,BND",
       contig_list = contig_list,
       sv_pipeline_base_docker = sv_pipeline_base_docker
   }

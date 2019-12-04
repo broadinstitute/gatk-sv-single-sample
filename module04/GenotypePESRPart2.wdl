@@ -13,6 +13,8 @@ import "Tasks04.wdl" as tasks04
 
 workflow GenotypePESRPart2 {
   input {
+    File bin_exclude
+    File bin_exclude_idx
     File cohort_vcf
     File RD_pesr_sepcutoff
     File RD_depth_sepcutoff
@@ -106,6 +108,8 @@ workflow GenotypePESRPart2 {
 
     call tasks04.RDTestGenotype as RDTestGenotypeUnder5kb {
       input:
+        bin_exclude=bin_exclude,
+        bin_exclude_idx=bin_exclude_idx,
         bed = lt5kb_bed,
         coveragefile = coveragefile,
         medianfile = medianfile,
@@ -192,6 +196,8 @@ workflow GenotypePESRPart2 {
 
     call tasks04.RDTestGenotype as RDTestGenotypeOver5kb {
       input:
+        bin_exclude=bin_exclude,
+        bin_exclude_idx=bin_exclude_idx,
         bed = gt5kb_bed,
         coveragefile = coveragefile,
         medianfile = medianfile,

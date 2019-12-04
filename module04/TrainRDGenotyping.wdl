@@ -13,6 +13,8 @@ import "Tasks04.wdl" as tasks04
 
 workflow TrainRDGenotyping {
   input {
+    File bin_exclude
+    File bin_exclude_idx
     File vcf                # VCF to genotype
     File coveragefile     # batch coverage file
     File medianfile         # batch median file
@@ -47,6 +49,8 @@ workflow TrainRDGenotyping {
 
   call tasks04.RDTestGenotype as GenotypeTrain {
     input:
+      bin_exclude=bin_exclude,
+      bin_exclude_idx=bin_exclude_idx,
       bed = MakeTrainingBed.bed,
       coveragefile = coveragefile,
       medianfile = medianfile,
@@ -89,6 +93,8 @@ workflow TrainRDGenotyping {
   scatter (pesr_bed in SplitVariants.lt5kb_beds) {
     call tasks04.RDTestGenotype as GenotypePESR {
       input:
+        bin_exclude=bin_exclude,
+        bin_exclude_idx=bin_exclude_idx,
         bed = pesr_bed,
         coveragefile = coveragefile,
         medianfile = medianfile,
@@ -106,6 +112,8 @@ workflow TrainRDGenotyping {
   scatter (gt5kb_bed in SplitVariants.gt5kb_beds) {
     call tasks04.RDTestGenotype as GenotypeOver5kb {
       input:
+        bin_exclude=bin_exclude,
+        bin_exclude_idx=bin_exclude_idx,
         bed = gt5kb_bed,
         coveragefile = coveragefile,
         medianfile = medianfile,

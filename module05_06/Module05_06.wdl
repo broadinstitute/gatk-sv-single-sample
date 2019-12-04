@@ -33,6 +33,7 @@ import "05_06_common_mini_tasks.wdl" as MiniTasks
 
 workflow Module05_06 {
   input {
+    File bin_exclude
     File raw_sr_bothside_pass
     File raw_sr_background_fail
     Float min_sr_background_fail_batches
@@ -59,9 +60,6 @@ workflow Module05_06 {
     File depth_blacklist_idx
     String prefix
     File trios_fam_file
-    File? sanders_2015_tarball
-    File? collins_2017_tarball
-    File? werling_2018_tarball
     File rf_cutoffs
     File batches_list
     File depth_gt_rd_sep_list
@@ -72,7 +70,12 @@ workflow Module05_06 {
     Int samples_per_clean_vcf_step2_shard
     File? outlier_samples_list
     Int? random_seed
+
+    # If include_external_benchmarking is set to true, the three tarball inputs must be provided
     Boolean include_external_benchmarking
+    File? sanders_2015_tarball
+    File? collins_2017_tarball
+    File? werling_2018_tarball
 
     String sv_base_mini_docker
     String sv_pipeline_docker
@@ -245,7 +248,7 @@ workflow Module05_06 {
         sv_types=["DEL","DUP","INV","BND","INS"],
         contig=contig,
         max_shards_per_chrom_svtype=100,
-        min_variants_per_shard_per_chrom_svtype=100,
+        min_variants_per_shard_per_chrom_svtype=min_variants_per_shard,
         subset_sr_lists=true,
         bothside_pass=sr_bothend_pass,
         background_fail=sr_background_fail,
@@ -277,7 +280,7 @@ workflow Module05_06 {
         sv_types=["DEL","DUP"],
         contig=contig,
         max_shards_per_chrom_svtype=100,
-        min_variants_per_shard_per_chrom_svtype=100,
+        min_variants_per_shard_per_chrom_svtype=min_variants_per_shard,
         subset_sr_lists=false,
         bothside_pass=sr_bothend_pass,
         background_fail=sr_background_fail,
@@ -360,7 +363,7 @@ workflow Module05_06 {
         prefix="~{prefix}.inv_only",
         contig=contig,
         max_shards_per_chrom=max_shards_per_chrom,
-        min_variants_per_shard=100,
+        min_variants_per_shard=min_variants_per_shard,
         cytobands=cytobands,
         cytobands_idx=cytobands_idx,
         discfile_list=discfile_list,
@@ -400,7 +403,7 @@ workflow Module05_06 {
         prefix="~{prefix}.all_variants",
         contig=contig,
         max_shards_per_chrom=max_shards_per_chrom,
-        min_variants_per_shard=100,
+        min_variants_per_shard=min_variants_per_shard,
         cytobands=cytobands,
         cytobands_idx=cytobands_idx,
         discfile_list=discfile_list,
@@ -453,6 +456,7 @@ workflow Module05_06 {
     #Depth-based genotyping of complex intervals
     call GenotypeComplexContig.ScatterCpxGenotyping as ScatterContigCpxGenotyping {
       input:
+        bin_exclude=bin_exclude,
         vcf=RenameVariants.renamed_vcf,
         n_master_vcf_shards=200,
         n_master_min_vars_per_vcf_shard=5000,
@@ -483,6 +487,7 @@ workflow Module05_06 {
         contig=contig,
         background_list=UpdateBackgroundFailThird.updated_list,
         fam_file=fam_file,
+        bothsides_pass_list=UpdateBothsidePassThird.updated_list,
         prefix=prefix,
         max_shards_per_chrom_step1=max_shards_per_chrom_clean_vcf_step1,
         min_records_per_shard_step1=min_records_per_shard_clean_vcf_step1,
@@ -507,8 +512,16 @@ workflow Module05_06 {
         runtime_override_combine_revised_4=runtime_override_combine_revised_4,
         runtime_override_combine_multi_ids_4=runtime_override_combine_multi_ids_4
     }
-  }
 
+    call UpdateSrList as UpdateBothsidePassThird {
+      input:
+        vcf=RenameVariants.renamed_vcf,
+        original_list=UpdateBothsidePassSecond.updated_list,
+        outfile="sr_bothside_pass.~{contig}.updated3.txt",
+        sv_pipeline_docker=sv_pipeline_docker,
+        runtime_attr_override=runtime_override_update_sr_list
+    }
+  }
   #Merge PESR+RD VCFs for 04b midpoint QC
   call MiniTasks.ConcatVcfs as ConcatMidpointVcfs {
     input:

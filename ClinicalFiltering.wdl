@@ -30,7 +30,7 @@ task FilterVcfBySampleGenotypeAndAddEvidenceAnnotation {
   }
   command <<<
     set -euo pipefail
-    sampleIndex=`gzip -cd ~{vcf_gz} | grep CHROM | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
+    sampleIndex=`gzip -cd ~{vcf_gz} | grep '^#CHROM' | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
 
     bcftools query -f "%CHROM\t%POS\t%REF\t%ALT\t~{evidence}\n" ~{vcf_gz} | bgzip -c > evidence_annotations.tab.gz
     tabix -s1 -b2 -e2 evidence_annotations.tab.gz
@@ -137,10 +137,10 @@ task GetUniqueNonGenotypedDepthCalls {
   }
   command <<<
     set -euo pipefail
-    sampleIndex=`gzip -cd ~{vcf_gz} | grep CHROM | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
+    sampleIndex=`gzip -cd ~{vcf_gz} | grep '^#CHROM' | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
 
     bcftools filter \
-        -i "FILTER == \"PASS\" && GT[${sampleIndex}]!=\"alt\" && INFO/ALGORITHMS[*] == \"depth\"" \
+        -i "FILTER == \"PASS\" && GT[${sampleIndex}]!=\"alt\" && INFO/ALGORITHMS[*] == \"depth\" && INFO/SVLEN >= 10000" \
         ~{vcf_gz} | bgzip -c > pass_depth_not_alt.vcf.gz
 
     bgzip -cd pass_depth_not_alt.vcf.gz | grep '#' > header.txt
@@ -336,10 +336,12 @@ task FilterVcfWithReferencePanelCalls {
   }
 }
 
-task ResetHighSRBackgroundFilter {
+task ResetFilter {
   input {
     File clinical_vcf
     File clinical_vcf_idx
+    String filter_to_reset
+    String info_header_line
 
     String sv_mini_docker
     RuntimeAttr? runtime_attr_override
@@ -356,7 +358,7 @@ task ResetHighSRBackgroundFilter {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
   String filebase = basename(clinical_vcf, ".vcf.gz")
-  String outfile = "~{filebase}.reset_filters.vcf.gz"
+  String outfile = "~{filebase}.reset_~{filter_to_reset}_filter.vcf.gz"
 
   output {
     File out = "~{outfile}"
@@ -366,17 +368,17 @@ task ResetHighSRBackgroundFilter {
 
   set -euo pipefail
 
-  echo '##INFO=<ID=HIGH_SR_BACKGROUND,Number=0,Type=Flag,Description="Sites with high split read background">' > header.txt
+  echo '~{info_header_line}' > header.txt
 
-  bcftools filter -i 'FILTER ~ "HIGH_SR_BACKGROUND"' ~{clinical_vcf} | bgzip -c > hsrb.vcf.gz
+  bcftools filter -i 'FILTER ~ "~{filter_to_reset}"' ~{clinical_vcf} | bgzip -c > hsrb.vcf.gz
   tabix hsrb.vcf.gz
 
   bcftools annotate \
     -k \
     -a hsrb.vcf.gz \
-    -m HIGH_SR_BACKGROUND \
+    -m ~{filter_to_reset} \
     -h header.txt \
-    -x FILTER/HIGH_SR_BACKGROUND \
+    -x FILTER/~{filter_to_reset} \
     ~{clinical_vcf} | bgzip -c > ~{outfile}
 
   tabix ~{outfile}

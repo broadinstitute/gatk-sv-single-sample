@@ -131,7 +131,7 @@ task CollectShardedVcfStats {
     # Run QC script
     /opt/sv-pipeline/scripts/vcf_qc/collectQC.vcf_wide.sh \
       ~{vcf} \
-      /opt/sv-pipeline/ref/vcf_qc_refs/SV_colors.txt \
+      /opt/sv-pipeline/scripts/vcf_qc/SV_colors.txt \
       collectQC_vcfwide_output/
     
     # Prep outputs

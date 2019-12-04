@@ -446,21 +446,25 @@ task SvtkResolve {
 
   command <<<
     set -eu -o pipefail
-  
-    #Run svtk resolve on variants after all-ref exclusion
-    svtk resolve \
-      ~{noref_vcf} \
-      ~{resolved_vcf} \
-      -p AllBatches_CPX_~{chrom} \
-      -u ~{unresolved_vcf} \
-      --discfile ~{merged_discfile} \
-      --mei-bed ~{mei_bed} \
-      --cytobands ~{cytobands} \
-      --min-rescan-pe-support ~{se_pe_cutoff} \
-      -x ~{pe_blacklist}
+    if [ $( zcat ~{noref_vcf} | cut -f1 | fgrep -v "#" | wc -l ) -gt 0 ]; then
+        #Run svtk resolve on variants after all-ref exclusion
+        svtk resolve \
+          ~{noref_vcf} \
+          ~{resolved_vcf} \
+          -p AllBatches_CPX_~{chrom} \
+          -u ~{unresolved_vcf} \
+          --discfile ~{merged_discfile} \
+          --mei-bed ~{mei_bed} \
+          --cytobands ~{cytobands} \
+          --min-rescan-pe-support ~{se_pe_cutoff} \
+          -x ~{pe_blacklist}
 
-    echo "svtk resolve complete"
-
+        echo "svtk resolve complete"
+        else
+          echo "no records in noref.vcf.gz; skipping svtk resolve"
+          zcat ~{noref_vcf} > ~{resolved_vcf}
+          zcat ~{noref_vcf} > ~{unresolved_vcf}
+    fi
     #Add all-ref variants back into resolved VCF
     #Note: requires modifying the INFO field with sed & awk given pysam C bug
     zcat ~{full_vcf} \
@@ -470,7 +474,7 @@ task SvtkResolve {
       | awk -v OFS="\t" '{ $8=$8";MEMBERS="$3; print }' \
       | cat ~{resolved_vcf} - \
       | vcf-sort \
-      > ~{resolved_vcf}.tmp
+      > ~{resolved_vcf}.tmp ||true
     # write to temporary file then move to original location, to prevent
     # the input from being obliterated
     mv ~{resolved_vcf}.tmp ~{resolved_vcf}
