@@ -1,0 +1,2 @@
+entity:sample_id	participant_id	bam_or_cram_file	bam_or_cram_index
+SM-GN4BI	NA24385	gs://gatk-sv-resources/samples/NA24385/NA24385_NA24385_O1D1_SM-G947H_v1_NS.cram	gs://gatk-sv-resources/samples/NA24385/NA24385_NA24385_O1D1_SM-G947H_v1_NS.cram.crai
