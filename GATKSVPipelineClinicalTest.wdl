@@ -1,7 +1,7 @@
 version 1.0
 
-import "GATKSVPipelineClinical.wdl" as module
-import "TestUtils.wdl" as utils
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/GATKSVPipelineClinical.wdl" as module
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/TestUtils.wdl" as utils
 
 workflow GATKSVPipelineClinicalTest {
   input {

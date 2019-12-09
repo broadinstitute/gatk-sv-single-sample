@@ -1,6 +1,6 @@
 version 1.0
 
-import "05_06_structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_structs.wdl"
 
 # use zcat to concatenate compressed files
 # -replaces "combine" task in some workflows

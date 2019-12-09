@@ -8,11 +8,11 @@
 
 version 1.0
 
-import "GenotypePESRPart1.wdl" as gp1
-import "GenotypePESRPart2.wdl" as gp2
-import "GenotypeDepthPart1.wdl" as gd1
-import "GenotypeDepthPart2_regeno.wdl" as gd2_r
-import "Tasks04.wdl" as tasks04
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module04/GenotypePESRPart1.wdl" as gp1
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module04/GenotypePESRPart2.wdl" as gp2
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module04/GenotypeDepthPart1.wdl" as gd1
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module04/GenotypeDepthPart2_regeno.wdl" as gd2_r
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module04/Tasks04.wdl" as tasks04
 workflow Module04 {
   input {
     File bin_exclude

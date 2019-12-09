@@ -1,9 +1,9 @@
 version 1.0
 
-import "Structs.wdl"
-import "CollectCoverage.wdl" as cov
-import "CramToBam.wdl" as ctb
-import "GermlineCNVCohort.wdl" as gcnv_cohort
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/gcnv/Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/gcnv/CollectCoverage.wdl" as cov
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/gcnv/CramToBam.wdl" as ctb
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/gcnv/GermlineCNVCohort.wdl" as gcnv_cohort
 
 # Trains gCNV model on a cohort with counts already collected
 workflow TrainGCNV {
