@@ -77,6 +77,7 @@ workflow Module05_06 {
     File? collins_2017_tarball
     File? werling_2018_tarball
 
+    String linux_docker
     String sv_base_mini_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
@@ -248,12 +249,13 @@ workflow Module05_06 {
         sv_types=["DEL","DUP","INV","BND","INS"],
         contig=contig,
         max_shards_per_chrom_svtype=100,
-        min_variants_per_shard_per_chrom_svtype=min_variants_per_shard,
+        min_variants_per_shard_per_chrom_svtype=100,
         subset_sr_lists=true,
         bothside_pass=sr_bothend_pass,
         background_fail=sr_background_fail,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_base_mini_docker=sv_base_mini_docker,
+        linux_docker=linux_docker,
         runtime_override_join_vcfs=runtime_override_join_vcfs,
         runtime_override_subset_bothside_pass=runtime_override_subset_bothside_pass,
         runtime_override_subset_background_fail=runtime_override_subset_background_fail,
@@ -280,12 +282,13 @@ workflow Module05_06 {
         sv_types=["DEL","DUP"],
         contig=contig,
         max_shards_per_chrom_svtype=100,
-        min_variants_per_shard_per_chrom_svtype=min_variants_per_shard,
+        min_variants_per_shard_per_chrom_svtype=100,
         subset_sr_lists=false,
         bothside_pass=sr_bothend_pass,
         background_fail=sr_background_fail,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_base_mini_docker=sv_base_mini_docker,
+        linux_docker=linux_docker,
         runtime_override_join_vcfs=runtime_override_join_vcfs,
         runtime_override_subset_bothside_pass=runtime_override_subset_bothside_pass,
         runtime_override_subset_background_fail=runtime_override_subset_background_fail,
@@ -363,7 +366,7 @@ workflow Module05_06 {
         prefix="~{prefix}.inv_only",
         contig=contig,
         max_shards_per_chrom=max_shards_per_chrom,
-        min_variants_per_shard=min_variants_per_shard,
+        min_variants_per_shard=100,
         cytobands=cytobands,
         cytobands_idx=cytobands_idx,
         discfile_list=discfile_list,
@@ -403,7 +406,7 @@ workflow Module05_06 {
         prefix="~{prefix}.all_variants",
         contig=contig,
         max_shards_per_chrom=max_shards_per_chrom,
-        min_variants_per_shard=min_variants_per_shard,
+        min_variants_per_shard=100,
         cytobands=cytobands,
         cytobands_idx=cytobands_idx,
         discfile_list=discfile_list,

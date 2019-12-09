@@ -839,6 +839,7 @@ workflow GATKSVPipelineClinical {
       sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       sv_base_mini_docker=sv_mini_docker,
+      linux_docker=linux_docker,
 
       runtime_override_update_sr_list=runtime_override_update_sr_list,
       runtime_override_merge_pesr_depth=runtime_override_merge_pesr_depth,
