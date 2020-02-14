@@ -8,9 +8,9 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_structs.wdl"
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_common_mini_tasks.wdl" as MiniTasks
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_cluster_single_chrom.wdl" as VcfClusterTasks
+import "05_06_structs.wdl"
+import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "05_06_cluster_single_chrom.wdl" as VcfClusterTasks
 
 # Workflow to run parallelized vcf clustering for a single chromosome
 workflow VcfClusterSingleChrom {
@@ -31,10 +31,10 @@ workflow VcfClusterSingleChrom {
     Boolean subset_sr_lists
     File bothside_pass
     File background_fail
+    File empty_file
 
     String sv_pipeline_docker
     String sv_base_mini_docker
-    String linux_docker
 
     # overrides for local tasks
     RuntimeAttr? runtime_override_join_vcfs
@@ -111,16 +111,11 @@ workflow VcfClusterSingleChrom {
     }
   }
 
-  call MiniTasks.EmptyList as EmptyVariantList {
-    input:
-      linux_docker=linux_docker
-  }
-
   output {
     File clustered_vcf = ClusterSingleChrom.clustered_vcf
     File clustered_vcf_idx = ClusterSingleChrom.clustered_vcf_idx
-    File filtered_bothside_pass = select_first([SubsetBothsidePass.filtered_vid_list, EmptyVariantList.empty_list_file])
-    File filtered_background_fail = select_first([SubsetBackgroundFail.filtered_vid_list, EmptyVariantList.empty_list_file])
+    File filtered_bothside_pass = select_first([SubsetBothsidePass.filtered_vid_list, empty_file])
+    File filtered_background_fail = select_first([SubsetBackgroundFail.filtered_vid_list, empty_file])
   }
 }
 

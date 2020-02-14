@@ -6,18 +6,18 @@ version 1.0
 
 ##########################################################################################
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/Structs.wdl"
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/BatchEvidenceMerging.wdl" as bem
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/CNMOPS.wdl" as cnmops
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/CollectCoverage.wdl" as cov
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/DepthPreprocessing.wdl" as dpn
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/MakeBincovMatrix.wdl" as mbm
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/MatrixQC.wdl" as mqc
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/MedianCov.wdl" as mc
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/PESRPreprocessing.wdl" as pp
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/GermlineCNVCase.wdl" as gcnv
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/PloidyEstimation.wdl" as pe
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/tinyresolve.wdl" as tiny
+import "Structs.wdl"
+import "BatchEvidenceMerging.wdl" as bem
+import "CNMOPS.wdl" as cnmops
+import "CollectCoverage.wdl" as cov
+import "DepthPreprocessing.wdl" as dpn
+import "MakeBincovMatrix.wdl" as mbm
+import "MatrixQC.wdl" as mqc
+import "MedianCov.wdl" as mc
+import "PESRPreprocessing.wdl" as pp
+import "GermlineCNVCase.wdl" as gcnv
+import "PloidyEstimation.wdl" as pe
+import "tinyresolve.wdl" as tiny
 
 # Batch-level workflow:
 #   - Merge sample evidence data into a single batch
@@ -224,6 +224,8 @@ workflow Module00c {
 
   call cnmops.CNMOPS as CNMOPS {
     input:
+      r1 = "3",
+      r2 = "10",
       batch = batch,
       samples = all_samples,
       bincov_matrix = MakeBincovMatrix.merged_bincov,
@@ -232,6 +234,33 @@ workflow Module00c {
       ped_file = select_first([AddCaseSampleToPed.combined_ped_file, ped_file]),
       blacklist = cnmops_blacklist,
       allo_file = cnmops_allo_file,
+      prefix = "header",
+      stitch_and_clean_large_events = false,
+      mem_gb_override_sample10 = cnmops_mem_gb_override_sample10,
+      mem_gb_override_sample3 = cnmops_mem_gb_override_sample3,
+      linux_docker = linux_docker,
+      sv_pipeline_docker = sv_pipeline_docker,
+      cnmops_docker = cnmops_docker,
+      runtime_attr_sample10 = cnmops_sample10_runtime_attr,
+      runtime_attr_sample3 = cnmops_sample3_runtime_attr,
+      runtime_attr_ped = cnmops_ped_runtime_attr,
+      runtime_attr_clean = cnmops_clean_runtime_attr
+  }
+
+  call cnmops.CNMOPS as CNMOPSLarge {
+    input:
+      r1 = "1000",
+      r2 = "100",
+      batch = batch,
+      samples = all_samples,
+      bincov_matrix = MakeBincovMatrix.merged_bincov,
+      bincov_matrix_index = MakeBincovMatrix.merged_bincov_idx,
+      chrom_file = cnmops_chrom_file,
+      ped_file = select_first([AddCaseSampleToPed.combined_ped_file, ped_file]),
+      blacklist = cnmops_blacklist,
+      allo_file = cnmops_allo_file,
+      prefix = "large",
+      stitch_and_clean_large_events = true,
       mem_gb_override_sample10 = cnmops_mem_gb_override_sample10,
       mem_gb_override_sample3 = cnmops_mem_gb_override_sample3,
       linux_docker = linux_docker,
@@ -312,6 +341,8 @@ workflow Module00c {
       gcnv_qs_cutoff = gcnv_qs_cutoff,
       std_cnmops_del = CNMOPS.Del,
       std_cnmops_dup = CNMOPS.Dup,
+      large_cnmops_del = CNMOPS.Del,
+      large_cnmops_dup = CNMOPS.Dup,
       batch = batch,
       sv_pipeline_docker = sv_pipeline_docker,
       sv_mini_docker = sv_mini_docker,
@@ -397,6 +428,11 @@ workflow Module00c {
     File cnmops_del_index = CNMOPS.Del_idx
     File cnmops_dup = CNMOPS.Dup
     File cnmops_dup_index = CNMOPS.Dup_idx
+
+    File cnmops_large_del = CNMOPSLarge.Del
+    File cnmops_large_del_index = CNMOPSLarge.Del_idx
+    File cnmops_large_dup = CNMOPSLarge.Dup
+    File cnmops_large_dup_index = CNMOPSLarge.Dup_idx
 
     File median_cov = MedianCov.medianCov
 

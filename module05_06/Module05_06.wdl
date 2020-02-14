@@ -19,17 +19,17 @@ version 1.0
 
 #Imports:
 # based on snapshot 11
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_vcf_cluster_single_chrom.wdl" as VcfClusterContig
+import "05_06_vcf_cluster_single_chrom.wdl" as VcfClusterContig
 # based on snapshot 28
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_resolve_complex_sv.wdl" as ResolveComplexContig
+import "05_06_resolve_complex_sv.wdl" as ResolveComplexContig
 # based on snapshot 12
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_scatter_cpx_genotyping.wdl" as GenotypeComplexContig
+import "05_06_scatter_cpx_genotyping.wdl" as GenotypeComplexContig
 # based on snapshot 93
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_clean_vcf.wdl" as CleanVcfContig
+import "05_06_clean_vcf.wdl" as CleanVcfContig
 # based on snapshot 75
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_master_vcf_qc.wdl" as VcfQc
+import "05_06_master_vcf_qc.wdl" as VcfQc
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_common_mini_tasks.wdl" as MiniTasks
+import "05_06_common_mini_tasks.wdl" as MiniTasks
 
 workflow Module05_06 {
   input {
@@ -68,6 +68,7 @@ workflow Module05_06 {
     Int max_shards_per_chrom_clean_vcf_step1
     Int min_records_per_shard_clean_vcf_step1
     Int samples_per_clean_vcf_step2_shard
+    File empty_file
     File? outlier_samples_list
     Int? random_seed
 
@@ -77,7 +78,6 @@ workflow Module05_06 {
     File? collins_2017_tarball
     File? werling_2018_tarball
 
-    String linux_docker
     String sv_base_mini_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
@@ -253,9 +253,9 @@ workflow Module05_06 {
         subset_sr_lists=true,
         bothside_pass=sr_bothend_pass,
         background_fail=sr_background_fail,
+        empty_file=empty_file,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_base_mini_docker=sv_base_mini_docker,
-        linux_docker=linux_docker,
         runtime_override_join_vcfs=runtime_override_join_vcfs,
         runtime_override_subset_bothside_pass=runtime_override_subset_bothside_pass,
         runtime_override_subset_background_fail=runtime_override_subset_background_fail,
@@ -286,9 +286,9 @@ workflow Module05_06 {
         subset_sr_lists=false,
         bothside_pass=sr_bothend_pass,
         background_fail=sr_background_fail,
+        empty_file=empty_file,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_base_mini_docker=sv_base_mini_docker,
-        linux_docker=linux_docker,
         runtime_override_join_vcfs=runtime_override_join_vcfs,
         runtime_override_subset_bothside_pass=runtime_override_subset_bothside_pass,
         runtime_override_subset_background_fail=runtime_override_subset_background_fail,

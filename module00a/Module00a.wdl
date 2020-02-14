@@ -6,14 +6,14 @@
 
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/Structs.wdl"
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/BAF.wdl" as baf
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/CollectCoverage.wdl" as cov
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/CramToBam.wdl" as ctb
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/Delly.wdl" as delly
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/Manta.wdl" as manta
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/PESRCollection.wdl" as pesr
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/Whamg.wdl" as wham
+import "Structs.wdl"
+import "BAF.wdl" as baf
+import "CollectCoverage.wdl" as cov
+import "CramToBam.wdl" as ctb
+import "Delly.wdl" as delly
+import "Manta.wdl" as manta
+import "PESRCollection.wdl" as pesr
+import "Whamg.wdl" as wham
 
 # Runs selected tools on BAM/CRAM files
 

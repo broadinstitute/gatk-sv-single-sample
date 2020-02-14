@@ -8,8 +8,8 @@
 
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module04/Structs.wdl"
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module04/Tasks04.wdl" as tasks04
+import "Structs.wdl"
+import "Tasks04.wdl" as tasks04
 
 workflow GenotypeDepthPart2 {
   input {
@@ -341,4 +341,4 @@ task MedianIntersect{
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
-} 
+}

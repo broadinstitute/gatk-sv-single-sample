@@ -8,7 +8,7 @@
 
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00b/Structs.wdl"
+import "Structs.wdl"
 
 workflow WGD {
   input {
@@ -72,11 +72,17 @@ task BuildWGDMatrix {
     sed -i 's/#//g' header.txt
     
     set -o pipefail
-    zcat ~{bincov_matrix} | bedtools intersect -f 1.0 -r -wa -a - -b ~{wgd_scoring_mask} > ~{batch}_WGD_scoring_matrix.bed
+    zcat ~{bincov_matrix} \
+    | bedtools intersect -f 0.49 -wa -u \
+      -a - \
+      -b ~{wgd_scoring_mask} \
+    | sort -Vk1,1 -k2,2n -k3,3n \
+    > ~{batch}_WGD_scoring_matrix.bed
     
-    cat header.txt ~{batch}_WGD_scoring_matrix.bed > ~{batch}_WGD_scoring_matrix_output.bed
-    bgzip -f ~{batch}_WGD_scoring_matrix_output.bed
-  
+    cat header.txt ~{batch}_WGD_scoring_matrix.bed \
+    | bgzip -c \
+    > ~{batch}_WGD_scoring_matrix_output.bed.gz
+
   >>>
   runtime {
     cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])

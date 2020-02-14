@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/Structs.wdl"
+import "Structs.wdl"
 
 workflow CollectCoverage {
 
@@ -188,7 +188,7 @@ task CollectCounts {
       --output counts_100bp.~{sample_id}.tsv \
       ~{sep=' ' disabled_read_filters_arr}
 
-    gzip counts_100bp.~{sample_id}.tsv
+    bgzip counts_100bp.~{sample_id}.tsv
   >>>
 
   runtime {

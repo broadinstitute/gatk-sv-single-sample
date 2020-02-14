@@ -23,7 +23,7 @@
 
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/Structs.wdl"
+import "Structs.wdl"
 
 workflow Delly {
   # Run Delly SV detection algorithm on whole genomes in array of

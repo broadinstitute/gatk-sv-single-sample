@@ -1,20 +1,20 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00a/Module00a.wdl" as m00a
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00b/Module00b.wdl" as m00b
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00b/PloidyEstimation.wdl" as pe
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/Module00c.wdl" as m00c
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/DepthPreprocessing.wdl" as dpn
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module01/Module01.wdl" as m01
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module02/Module02.wdl" as m02
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module02/SRTest.wdl" as SRTest
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module03/Module03.wdl" as m03
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module04/Module04.wdl" as m04
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/Module05_06.wdl" as m0506
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/gcnv/GermlineCNVCase.wdl" as gcnv
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/ClinicalFiltering.wdl" as ClinicalFiltering
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/GATKSVPipelineClinicalMetrics.wdl" as ClinicalMetrics
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/Structs.wdl"
+import "module00a/Module00a.wdl" as m00a
+import "module00b/Module00b.wdl" as m00b
+import "module00b/PloidyEstimation.wdl" as pe
+import "module00c/Module00c.wdl" as m00c
+import "module00c/DepthPreprocessing.wdl" as dpn
+import "module01/Module01.wdl" as m01
+import "module02/Module02.wdl" as m02
+import "module02/SRTest.wdl" as SRTest
+import "module03/Module03.wdl" as m03
+import "module04/Module04.wdl" as m04
+import "module05_06/Module05_06.wdl" as m0506
+import "gcnv/GermlineCNVCase.wdl" as gcnv
+import "ClinicalFiltering.wdl" as ClinicalFiltering
+import "GATKSVPipelineClinicalMetrics.wdl" as ClinicalMetrics
+import "Structs.wdl"
 
 # GATK SV Pipeline single sample mode
 # Runs Modules 00abc, 01, 03.MergePesrVcfs, 04, 05/06
@@ -243,6 +243,10 @@ workflow GATKSVPipelineClinical {
     File rmsk
     File segdups
 
+    Int? min_large_pesr_call_size_for_filtering
+    Float? min_large_pesr_depth_overlap_fraction
+
+    RuntimeAttr? runtime_attr_filter_large_pesr
     RuntimeAttr? runtime_attr_srtest
     RuntimeAttr? runtime_attr_split_vcf
     RuntimeAttr? runtime_attr_merge_allo
@@ -313,7 +317,8 @@ workflow GATKSVPipelineClinical {
     File pe_blacklist_idx
     File depth_blacklist
     File depth_blacklist_idx
-    
+    File empty_file
+
     Int clean_vcf_max_shards_per_chrom_clean_vcf_step1
     Int clean_vcf_min_records_per_shard_clean_vcf_step1
     Int clean_vcf_samples_per_clean_vcf_step2_shard
@@ -337,6 +342,11 @@ workflow GATKSVPipelineClinical {
     RuntimeAttr? runtime_override_merge_fam_file_list
     RuntimeAttr? runtime_override_make_cpx_cnv_input_file
 
+    ############################################################
+    ## Clinical filtering
+    ############################################################
+
+    Float? max_ref_panel_carrier_freq
 
     ############################################################
     ## QC
@@ -591,6 +601,17 @@ workflow GATKSVPipelineClinical {
       runtime_attr_override=runtime_attr_merge_pesr_vcfs
   }
 
+  call ClinicalFiltering.FilterLargePESRCallsWithoutRawDepthSupport as FilterLargePESRCallsWithoutRawDepthSupport {
+    input:
+      pesr_vcf=MergePesrVcfs.merged_pesr_vcf,
+      raw_dels=Module00c.merged_dels,
+      raw_dups=Module00c.merged_dups,
+      min_large_pesr_call_size_for_filtering=min_large_pesr_call_size_for_filtering,
+      min_large_pesr_depth_overlap_fraction=min_large_pesr_depth_overlap_fraction,
+      sv_pipeline_docker = sv_pipeline_docker,
+      runtime_attr_override=runtime_attr_filter_large_pesr
+  }
+
   call m02.GetSampleLists as SamplesList {
     input:
       ped_file = combined_ped_file,
@@ -603,7 +624,7 @@ workflow GATKSVPipelineClinical {
       splitfile = Module00c.merged_SR,
       medianfile = Module00c.median_cov,
       ped_file = combined_ped_file,
-      vcf = MergePesrVcfs.merged_pesr_vcf,
+      vcf = FilterLargePESRCallsWithoutRawDepthSupport.out,
       autosome_contigs = autosome_file,
       split_size = genotyping_n_per_split,
       algorithm = "PESR",
@@ -623,7 +644,7 @@ workflow GATKSVPipelineClinical {
 
   call m02.AggregateTests as AggregateTests {
     input:
-      vcf=MergePesrVcfs.merged_pesr_vcf,
+      vcf=FilterLargePESRCallsWithoutRawDepthSupport.out,
       srtest=SRTest.srtest,
       rmsk=rmsk,
       segdups=segdups,
@@ -632,7 +653,7 @@ workflow GATKSVPipelineClinical {
 
   call ClinicalFiltering.RewriteSRCoords as RewriteSRCoords {
     input:
-      vcf = MergePesrVcfs.merged_pesr_vcf,
+      vcf = FilterLargePESRCallsWithoutRawDepthSupport.out,
       metrics = AggregateTests.metrics,
       cutoffs = cutoffs,
       prefix = batch,
@@ -687,6 +708,15 @@ workflow GATKSVPipelineClinical {
       runtime_attr_concat_vcfs=runtime_attr_concat_vcfs
   }
 
+  call ClinicalFiltering.ConvertCNVsWithoutDepthSupportToBNDs as ConvertCNVsWithoutDepthSupportToBNDs {
+    input:
+      genotyped_pesr_vcf=Module04.genotyped_pesr_vcf,
+      allosome_file=allosome_file,
+      merged_famfile=combined_ped_file,
+      clinical_sample=sample_id,
+      sv_pipeline_docker=sv_pipeline_docker
+  }
+
   call StringArrayToListFile as FamFileListFile {
     input:
       strings=[combined_ped_file],
@@ -695,14 +725,14 @@ workflow GATKSVPipelineClinical {
 
   call StringArrayToListFile as PesrListFile {
     input:
-      strings=[Module04.genotyped_pesr_vcf],
+      strings=[ConvertCNVsWithoutDepthSupportToBNDs.out_vcf],
       sv_mini_docker=sv_mini_docker
 
   }
 
   call StringArrayToListFile as PesrIdxListFile {
     input:
-      strings=[Module04.genotyped_pesr_vcf_index],
+      strings=[ConvertCNVsWithoutDepthSupportToBNDs.out_vcf_idx],
       sv_mini_docker=sv_mini_docker
   }
 
@@ -814,6 +844,7 @@ workflow GATKSVPipelineClinical {
       pe_blacklist_idx=pe_blacklist_idx,
       depth_blacklist=depth_blacklist,
       depth_blacklist_idx=depth_blacklist_idx,
+      empty_file=empty_file,
 
       prefix=batch,
       trios_fam_file=ref_ped_file,
@@ -839,7 +870,6 @@ workflow GATKSVPipelineClinical {
       sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       sv_base_mini_docker=sv_mini_docker,
-      linux_docker=linux_docker,
 
       runtime_override_update_sr_list=runtime_override_update_sr_list,
       runtime_override_merge_pesr_depth=runtime_override_merge_pesr_depth,
@@ -882,7 +912,9 @@ workflow GATKSVPipelineClinical {
     input:
       clinical_vcf=FilterVcfForCaseSampleGenotype.out,
       cohort_vcf=ref_panel_vcf,
-      sv_mini_docker=sv_mini_docker
+      case_sample_id=sample_id,
+      max_ref_panel_carrier_freq=max_ref_panel_carrier_freq,
+      sv_pipeline_docker=sv_pipeline_docker
   }
 
   call ClinicalFiltering.ResetFilter as ResetHighSRBackgroundFilter {
@@ -921,7 +953,7 @@ workflow GATKSVPipelineClinical {
       sample_counts = select_first([Module00a.coverage_counts])[0],
       cleaned_vcf = Module0506.cleaned_vcf,
       final_vcf = FinalVCFCleanup.out,
-      genotyped_pesr_vcf = Module04.genotyped_pesr_vcf,
+      genotyped_pesr_vcf = ConvertCNVsWithoutDepthSupportToBNDs.out_vcf,
       genotyped_depth_vcf = Module04.genotyped_depth_vcf,
       non_genotyped_unique_depth_calls_vcf = GetUniqueNonGenotypedDepthCalls.out,
       contig_list = primary_contigs_list,

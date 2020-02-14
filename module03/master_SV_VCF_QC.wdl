@@ -6,10 +6,10 @@
 
 ##########################################################################################
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module03/collectQC_vcfwide.wdl" as collectQC_vcfwide
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module03/collectQC_external_benchmarking.wdl" as collectQC_external_benchmarking
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module03/collectQC_perSample.wdl" as collectQC_perSample
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module03/collectQC_perSample_benchmarking.wdl" as collectQC_perSample_benchmarking
+import "collectQC_vcfwide.wdl" as collectQC_vcfwide
+import "collectQC_external_benchmarking.wdl" as collectQC_external_benchmarking
+import "collectQC_perSample.wdl" as collectQC_perSample
+import "collectQC_perSample_benchmarking.wdl" as collectQC_perSample_benchmarking
 
 # Copyright (c) 2018 Talkowski Laboratory
 # Contact: Ryan Collins <rlcollins@g.harvard.edu>

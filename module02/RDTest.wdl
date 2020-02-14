@@ -8,8 +8,8 @@
 
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module02/Tasks02.wdl" as tasks02
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module02/RDTestChromosome.wdl" as rdc
+import "Tasks02.wdl" as tasks02
+import "RDTestChromosome.wdl" as rdc
 
 workflow RDTest {
   input {

@@ -8,7 +8,7 @@
 
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module04/TrainRDGenotyping.wdl" as rd_train
+import "TrainRDGenotyping.wdl" as rd_train
 
 workflow GenotypeDepthPart1 {
   input {

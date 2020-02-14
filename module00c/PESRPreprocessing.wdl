@@ -8,7 +8,7 @@
 
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00c/Structs.wdl"
+import "Structs.wdl"
 
 workflow PreprocessPESR {
   input {

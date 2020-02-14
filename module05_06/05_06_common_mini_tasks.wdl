@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module05_06/05_06_structs.wdl"
+import "05_06_structs.wdl"
 
 # use zcat to concatenate compressed files
 # -replaces "combine" task in some workflows
@@ -681,24 +681,4 @@ task SplitVcf {
   output {
     Array[File] vcf_shards = glob("~{prefix}*.vcf.gz")
   }
-}
-
-# create an empty list file
-task EmptyList {
-  input {
-    String linux_docker
-  }
-
-  runtime {
-    docker: linux_docker
-  }
-
-  command <<<
-    touch empty.list
-  >>>
-
-  output {
-    File empty_list_file = "empty.list"
-  }
-
 }

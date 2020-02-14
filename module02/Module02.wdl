@@ -8,10 +8,10 @@
 
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module02/PETest.wdl" as pet
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module02/RDTest.wdl" as rdt
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module02/SRTest.wdl" as srt
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module02/BAFTest.wdl" as baft
+import "PETest.wdl" as pet
+import "RDTest.wdl" as rdt
+import "SRTest.wdl" as srt
+import "BAFTest.wdl" as baft
 
 workflow Module02 {
   input {

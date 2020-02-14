@@ -8,7 +8,7 @@
 
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/module00b/Structs.wdl"
+import "Structs.wdl"
 
 workflow BincovMatrix {
   input {
@@ -17,6 +17,7 @@ workflow BincovMatrix {
     Array[String]? bincov_matrix_samples
     File? bincov_matrix
     String batch
+    Int? binsize
     Int? disk_overhead_gb
     Int? bincov_size_mb
     String sv_mini_docker
@@ -30,6 +31,7 @@ workflow BincovMatrix {
       bincov_matrix_samples = bincov_matrix_samples,
       bincov_matrix = bincov_matrix,
       batch = batch,
+      binsize = binsize,
       disk_overhead_gb = disk_overhead_gb,
       bincov_size_mb = bincov_size_mb,
       sv_mini_docker = sv_mini_docker,
@@ -49,6 +51,7 @@ task MakeBincovMatrix {
     Array[String]? bincov_matrix_samples # Required if bincov_matrix is supplied and vice versa
     File? bincov_matrix
     String batch
+    Int? binsize
     Int? disk_overhead_gb
     Int? bincov_size_mb
     String sv_mini_docker
@@ -98,6 +101,19 @@ task MakeBincovMatrix {
       | sed '/^#/d' \
       | awk -v x="${shift}" 'BEGIN{OFS="\t"}{$2=$2-x; print $1,$2,$3}' > locs
 
+    # determine bin size, and drop all bins not exactly equal to this size
+    if ~{!defined(binsize)}; then
+      sed -n '1,1000p' locs | awk '{ print $3-$2 }' \
+      | sort | uniq -c | sort -nrk1,1 \
+      | sed -n '1p' | awk '{ print $2 }' \
+      > most_common_binsize.txt
+      binsize=$( cat most_common_binsize.txt )
+    else
+      binsize=~{binsize}
+    fi
+    awk -v FS="\t" -v b=$binsize '{ if ($3-$2==b) print $0 }' locs > locs2
+    mv locs2 locs
+
     mkdir cargo
     fileNo=0
     for fil in ~{sep=' ' all_count_files}
@@ -114,7 +130,8 @@ task MakeBincovMatrix {
         | sed '/^@/d' \
         | sed '/^CONTIG	START	END	COUNT$/d' \
         | sed '/^#/d' \
-        | awk -v x="${shift}" 'BEGIN{OFS="\t"}{$2=$2-x; print $0}' > fil.bincov.bed
+        | awk -v x="${shift}" -v b=$binsize \
+          'BEGIN{OFS="\t"}{$2=$2-x; if ($3-$2==b) print $0}' > fil.bincov.bed
       if ! cut -f1-3 fil.bincov.bed | cmp locs; then
         echo $fil has different intervals than ~{all_count_files[0]}
         exit 1

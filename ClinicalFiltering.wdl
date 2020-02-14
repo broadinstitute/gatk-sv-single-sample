@@ -1,6 +1,6 @@
 version 1.0
 
-import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.4-dockstore_release2/Structs.wdl"
+import "Structs.wdl"
 
 task FilterVcfBySampleGenotypeAndAddEvidenceAnnotation {
   input {
@@ -210,13 +210,78 @@ task FilterVcfForCaseSampleGenotype {
   }
 }
 
+task FilterLargePESRCallsWithoutRawDepthSupport {
+  input {
+    File pesr_vcf
+    File raw_dels
+    File raw_dups
+
+    Int min_large_pesr_call_size_for_filtering = 1000000
+    Float min_large_pesr_depth_overlap_fraction = 0.3
+
+    String sv_pipeline_docker
+    RuntimeAttr? runtime_attr_override
+  }
+
+  RuntimeAttr default_attr = object {
+    cpu_cores: 1,
+    mem_gb: 3.75,
+    disk_gb: 10,
+    boot_disk_gb: 10,
+    preemptible_tries: 3,
+    max_retries: 1
+  }
+  RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
+
+  String filebase = basename(pesr_vcf, ".vcf.gz")
+  String outfile = "~{filebase}.filter_large_pesr_by_depth.vcf.gz"
+
+  output {
+    File out = "~{outfile}"
+    File out_idx = "~{outfile}.tbi"
+  }
+  command <<<
+    set -euo pipefail
+
+    svtk vcf2bed ~{pesr_vcf} stdout | cut -f1-5 | awk '$3 - $2 > ~{min_large_pesr_call_size_for_filtering} && ($5 == "DEL")' \
+        | coverageBed -a stdin -b ~{raw_dels} | awk '$NF < ~{min_large_pesr_depth_overlap_fraction} {print $4}' > large_dels_without_raw_depth_support.list
+
+    svtk vcf2bed ~{pesr_vcf} stdout | cut -f1-5 | awk '$3 - $2 > ~{min_large_pesr_call_size_for_filtering} && ($5 == "DUP")' \
+        | coverageBed -a stdin -b ~{raw_dups} | awk '$NF < ~{min_large_pesr_depth_overlap_fraction} {print $4}' > large_dups_without_raw_depth_support.list
+
+    cat large_dels_without_raw_depth_support.list large_dups_without_raw_depth_support.list > large_pesr_without_raw_depth_support.list
+
+    cat \
+        <(gzip -cd ~{pesr_vcf} | grep -v '^#' | grep -w -f large_pesr_without_raw_depth_support.list | sed -e 's/SVTYPE=DEL/SVTYPE=BND/' -e 's/SVTYPE=DUP/SVTYPE=BND/' -e 's/<DEL>/<BND>/' -e 's/<DUP>/<BND>/') \
+        <(gzip -cd ~{pesr_vcf} | grep -v '^#' | grep -v -w -f large_pesr_without_raw_depth_support.list) \
+       | cat <(sed -n -e '/^#/p' <(zcat ~{pesr_vcf})) - \
+       | vcf-sort -c \
+       | bgzip -c \
+       > ~{outfile}
+
+    tabix ~{outfile}
+  >>>
+  runtime {
+    cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+    memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
+    disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+    docker: sv_pipeline_docker
+    preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+    maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
+  }
+}
 
 task FilterVcfWithReferencePanelCalls {
   input {
     File clinical_vcf
     File cohort_vcf
+    String case_sample_id
+    Float? max_ref_panel_carrier_freq
+    Float? required_reciprocal_overlap_match_pct
+    Float? required_cnv_coverage_pct
 
-    String sv_mini_docker
+    String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -238,39 +303,25 @@ task FilterVcfWithReferencePanelCalls {
     File out_idx = "~{outfile}.tbi"
   }
   command <<<
-
   set -euo pipefail
+  BCFTOOLS=/usr/local/bin/bcftools
+  $BCFTOOLS query -l ~{cohort_vcf} > ref_samples.list
+  maxRefSamples=$(wc -l ref_samples.list | awk '{print sprintf("%.0f", $1 * ~{default="0.01" max_ref_panel_carrier_freq})}')
 
-  bcftools query -l ~{cohort_vcf} > ref_samples.list
+  /opt/sv-pipeline/scripts/clinical/apply_ref_panel_genotypes_filter.py \
+    ~{clinical_vcf} \
+    ~{cohort_vcf} \
+    ~{case_sample_id} ~{default="0.5" required_cnv_coverage_pct} ${maxRefSamples} \
+    del_dup_cpx_inv_filtered.vcf.gz
 
-  bcftools query \
-      -i 'FILTER !~ "MULTIALLELIC" && (INFO/SVTYPE="DEL" || INFO/SVTYPE="DUP" || INFO/SVTYPE="INV" || INFO/SVTYPE="CPX")' \
-      -f '%CHROM\t%POS\t%END\t%ID\t%SVLEN\n' \
-      ~{cohort_vcf} | \
-      awk '{OFS="\t"; $3 = $2 + $5; print}' \
-      > cohort.gts.del_dup_inv_cpx.bed
-
-  bcftools query \
-      -i 'FILTER !~ "MULTIALLELIC" && (INFO/SVTYPE == "DEL" || INFO/SVTYPE="DUP" || INFO/SVTYPE="INV" || INFO/SVTYPE="CPX") && AC > 0' \
-      -S ref_samples.list \
-      -f '%CHROM\t%POS\t%END\t%ID\t%SVLEN\n' \
-      ~{clinical_vcf} | \
-      awk '{OFS="\t"; $3 = $2 + $5; print}' \
-      > case.ref_panel_variant.del_dup_inv_cpx.bed
-
-  intersectBed \
-      -a case.ref_panel_variant.del_dup_inv_cpx.bed \
-      -b cohort.gts.del_dup_inv_cpx.bed \
-      -f .5 -r -v -wa | cut -f4 > case_variants_not_in_ref_panel.del_dup_inv_cpx.list
-
-  bcftools query \
+  $BCFTOOLS query \
       -i 'FILTER ~ "MULTIALLELIC"' \
       -f '%CHROM\t%POS\t%END\t%ID\t%SVLEN\n' \
       ~{cohort_vcf} | \
       awk '{OFS="\t"; $3 = $2 + $5; print}' \
       > cohort.gts.multiallelic.bed
 
-  bcftools query \
+  $BCFTOOLS query \
       -i 'FILTER ~ "MULTIALLELIC"' \
       -S ref_samples.list \
       -f '%CHROM\t%POS\t%END\t%ID\t%SVLEN\n' \
@@ -281,14 +332,14 @@ task FilterVcfWithReferencePanelCalls {
   intersectBed \
       -a case.ref_panel_variant.multiallelic.bed \
       -b cohort.gts.multiallelic.bed \
-      -f .5 -r -v -wa | cut -f4 > multiallelics.list
+      -f ~{default="0.5" required_reciprocal_overlap_match_pct} -r -v -wa | cut -f4 > multiallelics.list
 
-  bcftools query -i 'SVTYPE="INS"' \
+  $BCFTOOLS query -i 'SVTYPE="INS"' \
       -f '%CHROM\t%POS\t%END\t%ID\t%SVLEN\n' \
       ~{cohort_vcf} | \
       awk '{OFS="\t"; $3 = $2 + $5; print}' > cohort.gts.ins.bed
 
-  bcftools query -i 'SVTYPE == "INS" && AC > 0' \
+  $BCFTOOLS query -i "SVTYPE == 'INS' && AC >= ${maxRefSamples}" \
       -S ref_samples.list \
       -f '%CHROM\t%POS\t%END\t%ID\t%SVLEN\n' \
       ~{clinical_vcf} | \
@@ -297,14 +348,14 @@ task FilterVcfWithReferencePanelCalls {
   intersectBed \
       -a case.ref_panel_variant.ins.bed \
       -b cohort.gts.ins.bed \
-      -f .5 -r -v -wa | cut -f4 > case_variants_not_in_ref_panel.ins.list
+      -f ~{default="0.5" required_reciprocal_overlap_match_pct} -r -v -wa | cut -f4 > case_variants_not_in_ref_panel.ins.list
 
-  bcftools query -i 'SVTYPE="BND"' \
+  $BCFTOOLS query -i 'SVTYPE="BND"' \
       -f '%CHROM\t%POS\t%INFO/CHR2\t%INFO/END\t%ID\t\n' \
       ~{cohort_vcf} | \
       awk '{OFS="\t"; print $1,$2-50,$2+50,$3,$4-50,$4+50,$5}' > cohort.gts.bnd.bedpe
 
-  bcftools query -i 'SVTYPE="BND" && AC > 0' \
+  $BCFTOOLS query -i "SVTYPE='BND' && AC >= ${maxRefSamples}" \
       -S ref_samples.list \
       -f '%CHROM\t%POS\t%INFO/CHR2\t%INFO/END\t%ID\t\n' \
       ~{clinical_vcf} | \
@@ -315,14 +366,13 @@ task FilterVcfWithReferencePanelCalls {
       -type both |\
       cut -f7 | sort -u > case_bnds_to_keep.list
 
-  cat case_variants_not_in_ref_panel.del_dup_inv_cpx.list \
-               case_variants_not_in_ref_panel.ins.list  > case_variants_not_in_ref_panel.list
+  cp case_variants_not_in_ref_panel.ins.list case_variants_not_in_ref_panel.list
 
-  bcftools filter \
+  $BCFTOOLS filter \
       -e 'ID=@case_variants_not_in_ref_panel.list || ( SVTYPE="BND" && ID!=@case_bnds_to_keep.list ) || (FILTER ~ "MULTIALLELIC" && ID!=@multiallelics.list )' \
       -s REF_PANEL_GENOTYPES \
       -m + \
-      ~{clinical_vcf} | bgzip -c > ~{outfile}
+      del_dup_cpx_inv_filtered.vcf.gz | bgzip -c > ~{outfile}
   tabix ~{outfile}
   >>>
   runtime {
@@ -330,7 +380,7 @@ task FilterVcfWithReferencePanelCalls {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_pipeline_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -476,6 +526,61 @@ task RewriteSRCoords {
       | vcf-sort -c \
       | bgzip -c \
       > ~{prefix}.corrected_coords.vcf.gz
+
+  >>>
+  runtime {
+    cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+    memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
+    disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+    docker: sv_pipeline_docker
+    preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+    maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
+  }
+
+}
+
+task ConvertCNVsWithoutDepthSupportToBNDs {
+  input {
+    File genotyped_pesr_vcf
+    File allosome_file
+    String clinical_sample
+    File merged_famfile
+    Int? min_length
+    String sv_pipeline_docker
+    RuntimeAttr? runtime_attr_override
+  }
+
+  RuntimeAttr default_attr = object {
+    cpu_cores: 1,
+    mem_gb: 10,
+    disk_gb: 10,
+    boot_disk_gb: 10,
+    preemptible_tries: 3,
+    max_retries: 1
+  }
+  RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
+
+  String filebase = basename(genotyped_pesr_vcf, ".vcf.gz")
+  String outfile = "~{filebase}.final_cleanup.vcf.gz"
+
+  output {
+    File out_vcf = "~{outfile}"
+    File out_vcf_idx = "~{outfile}.tbi"
+  }
+  command <<<
+
+    set -euo pipefail
+
+    /opt/sv-pipeline/scripts/clinical/convert_cnvs_without_depth_support_to_bnds.py \
+        ~{genotyped_pesr_vcf} \
+        ~{allosome_file} \
+        ~{merged_famfile} \
+        ~{clinical_sample} \
+        ~{default="1000" min_length} \
+        -o ~{outfile}
+
+    tabix ~{outfile}
 
   >>>
   runtime {
