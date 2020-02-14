@@ -1,6 +1,6 @@
 version 1.0
 
-import "TestUtils.wdl" as tu
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module01/TestUtils.wdl" as tu
 
 workflow Module01Metrics {
   input {

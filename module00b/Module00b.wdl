@@ -6,11 +6,11 @@ version 1.0
 
 ##########################################################################################
 
-import "Structs.wdl"
-import "MakeBincovMatrix.wdl" as mbm
-import "PloidyEstimation.wdl" as pe
-import "RawVcfQC.wdl" as vcfqc
-import "WGD.wdl" as wgd
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module00b/Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module00b/MakeBincovMatrix.wdl" as mbm
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module00b/PloidyEstimation.wdl" as pe
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module00b/RawVcfQC.wdl" as vcfqc
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module00b/WGD.wdl" as wgd
 
 # Runs single sample tasks on collected evidence:
 #   - Ploidy determination

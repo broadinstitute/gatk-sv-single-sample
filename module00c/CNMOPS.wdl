@@ -8,7 +8,7 @@ version 1.0
 
 ##########################################################################################
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module00c/Structs.wdl"
 
 ## cnMOPS worflow definition ##
 ## mode = sex (1=male, 2=female)

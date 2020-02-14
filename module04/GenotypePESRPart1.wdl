@@ -8,9 +8,9 @@
 
 version 1.0
 
-import "TrainRDGenotyping.wdl" as rd_train
-import "TrainPEGenotyping.wdl" as pe_train
-import "TrainSRGenotyping.wdl" as sr_train
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module04/TrainRDGenotyping.wdl" as rd_train
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module04/TrainPEGenotyping.wdl" as pe_train
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.5-clinical-improvements/module04/TrainSRGenotyping.wdl" as sr_train
 
 workflow GenotypePESRPart1 {
   input {
