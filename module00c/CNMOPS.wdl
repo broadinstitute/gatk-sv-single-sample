@@ -15,6 +15,8 @@ import "Structs.wdl"
 
 workflow CNMOPS {
   input {
+    String r1
+    String r2
     String batch
     File bincov_matrix
     File chrom_file
@@ -23,6 +25,8 @@ workflow CNMOPS {
     File blacklist
     File allo_file
     Array[String]+ samples
+    String prefix
+    Boolean? stitch_and_clean_large_events = false
     Float? mem_gb_override_sample10
     Float? mem_gb_override_sample3
     String linux_docker
@@ -40,13 +44,13 @@ workflow CNMOPS {
   Array[Array[String]] Chroms = read_tsv(chrom_file)
 
   scatter (Allo in Allos) {
-    call CNSampleNormal as Male10 {
+    call CNSampleNormal as MaleR2 {
       input:
         chr = Allo[0],
         black = blacklist,
         ped = ped_file,
         mode = "1",
-        r = "10",
+        r = r2,
         bincov_matrix = bincov_matrix,
         bincov_matrix_index = bincov_matrix_index,
         mem_gb_override = mem_gb_sample10,
@@ -54,13 +58,13 @@ workflow CNMOPS {
         runtime_attr_override = runtime_attr_sample10
     }
 
-    call CNSampleNormal as Male3 {
+    call CNSampleNormal as MaleR1 {
       input:
         chr = Allo[0],
         black = blacklist,
         ped = ped_file,
         mode = "1",
-        r = "3",
+        r = r1,
         bincov_matrix = bincov_matrix,
         bincov_matrix_index = bincov_matrix_index,
         mem_gb_override = mem_gb_sample3,
@@ -70,13 +74,13 @@ workflow CNMOPS {
   }
 
   scatter (Chrom in Chroms) {
-    call CNSampleNormal as Normal10 {
+    call CNSampleNormal as NormalR2 {
       input:
         chr = Chrom[0],
         black = blacklist,
         ped = ped_file,
         mode = "normal",
-        r = "10",
+        r = r2,
         bincov_matrix = bincov_matrix,
         bincov_matrix_index = bincov_matrix_index,
         mem_gb_override = mem_gb_sample10,
@@ -84,13 +88,13 @@ workflow CNMOPS {
         runtime_attr_override = runtime_attr_sample10
     }
 
-    call CNSampleNormal as Normal3 {
+    call CNSampleNormal as NormalR1 {
       input:
         chr = Chrom[0],
         black = blacklist,
         ped = ped_file,
         mode = "normal",
-        r = "3",
+        r = r1,
         bincov_matrix = bincov_matrix,
         bincov_matrix_index = bincov_matrix_index,
         mem_gb_override = mem_gb_sample3,
@@ -99,13 +103,13 @@ workflow CNMOPS {
     }
   }
 
-  call CNSampleNormal as Female10 {
+  call CNSampleNormal as FemaleR2 {
     input:
       chr = "chrX",
       black = blacklist,
       ped = ped_file,
       mode = "2",
-      r = "10",
+      r = r2,
       bincov_matrix = bincov_matrix,
       bincov_matrix_index = bincov_matrix_index,
       mem_gb_override = mem_gb_sample10,
@@ -113,13 +117,13 @@ workflow CNMOPS {
       runtime_attr_override = runtime_attr_sample10
   }
 
-  call CNSampleNormal as Female3 {
+  call CNSampleNormal as FemaleR1 {
     input:
       chr = "chrX",
       black = blacklist,
       ped = ped_file,
       mode = "2",
-      r = "3",
+      r = r1,
       bincov_matrix = bincov_matrix,
       bincov_matrix_index = bincov_matrix_index,
       mem_gb_override = mem_gb_sample3,
@@ -137,15 +141,19 @@ workflow CNMOPS {
 
   call CleanCNMops {
     input:
+      chrom_file=chrom_file,
+      allo_file=allo_file,
       samplelist = GetPed.batchped,
       black = blacklist,
       batch = batch,
-      N3 = Normal3.Gff,
-      N10 = Normal10.Gff,
-      M3 = Male3.Gff,
-      M10 = Male10.Gff,
-      F3 = Female3.Gff,
-      F10 = Female10.Gff,
+      NR1 = NormalR1.Gff,
+      NR2 = NormalR2.Gff,
+      MR1 = MaleR1.Gff,
+      MR2 = MaleR2.Gff,
+      FR1 = FemaleR1.Gff,
+      FR2 = FemaleR2.Gff,
+      prefix = prefix,
+      stitch_and_clean_large_events = stitch_and_clean_large_events,
       sv_pipeline_docker = sv_pipeline_docker,
       runtime_attr_override = runtime_attr_ped
   }
@@ -198,12 +206,16 @@ task CleanCNMops {
     File samplelist
     File black
     String batch
-    Array[File] N3
-    Array[File] N10
-    Array[File] M3
-    Array[File] M10
-    File F3
-    File F10
+    Array[File] NR1
+    Array[File] NR2
+    Array[File] MR1
+    Array[File] MR2
+    File FR1
+    File FR2
+    String prefix
+    Boolean? stitch_and_clean_large_events = false
+    File? chrom_file
+    File? allo_file
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
@@ -219,16 +231,16 @@ task CleanCNMops {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
   output {
-    File Del = "~{batch}.DEL.header.bed.gz"
-    File Del_idx = "~{batch}.DEL.header.bed.gz.tbi"
-    File Dup = "~{batch}.DUP.header.bed.gz"
-    File Dup_idx = "~{batch}.DUP.header.bed.gz.tbi"
+    File Del = "~{batch}.DEL.~{prefix}.bed.gz"
+    File Del_idx = "~{batch}.DEL.~{prefix}.bed.gz.tbi"
+    File Dup = "~{batch}.DUP.~{prefix}.bed.gz"
+    File Dup_idx = "~{batch}.DUP.~{prefix}.bed.gz.tbi"
   }
   command <<<
 
     set -euo pipefail
     cut -f2 ~{samplelist} > sample.list
-    cat ~{sep=" "  N3} ~{sep=" "  N10} ~{sep=" "  M3} ~{sep=" "  M10} ~{F3} ~{F10} > cnmops.gff
+    cat ~{sep=" "  NR1} ~{sep=" "  NR2} ~{sep=" "  MR1} ~{sep=" "  MR2} ~{FR1} ~{FR2} > cnmops.gff
 
     mkdir calls
     grep -v "#" cnmops.gff > cnmops.gff1
@@ -239,18 +251,30 @@ task CleanCNMops {
     awk -v batch=~{batch}_DEL_ 'BEGIN{OFS="\t"} {print $1,$2,$3,batch,$4,"cnmops"}' DELS.bed | cat -n |\
     awk 'BEGIN{OFS="\t"} {print $2,$3,$4,$5$1,$6,"DEL",$7}' | sort -k1,1V -k2,2n > ~{batch}.DEL.bed
 
-    cat <(echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources") ~{batch}.DEL.bed  > ~{batch}.DEL.header.bed
-    bgzip -f ~{batch}.DEL.header.bed
-    tabix -f ~{batch}.DEL.header.bed.gz
+    cat <(echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources") ~{batch}.DEL.bed  > ~{batch}.DEL.~{prefix}.bed
 
     zcat calls/*/*.cnMOPS.DUP.bed.gz > DUPS.bed 
     awk -v batch=~{batch}_DUP_ 'BEGIN{OFS="\t"} {print $1,$2,$3,batch,$4,"cnmops"}' DUPS.bed | cat -n |\
     awk 'BEGIN{OFS="\t"} {print $2,$3,$4,$5$1,$6,"DUP",$7}' | sort -k1,1V -k2,2n > ~{batch}.DUP.bed
 
-    cat <(echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources") ~{batch}.DUP.bed  > ~{batch}.DUP.header.bed
-    bgzip -f ~{batch}.DUP.header.bed
-    tabix -f ~{batch}.DUP.header.bed.gz
-    
+    cat <(echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources") ~{batch}.DUP.bed  > ~{batch}.DUP.~{prefix}.bed
+
+    if ~{stitch_and_clean_large_events}; then
+      cat ~{chrom_file} ~{allo_file} > contig.fai
+      svtk rdtest2vcf --contigs contig.fai ~{batch}.DUP.~{prefix}.bed sample.list dup.vcf.gz
+      svtk rdtest2vcf --contigs contig.fai ~{batch}.DEL.~{prefix}.bed sample.list del.vcf.gz
+      bash /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh -d dup.vcf.gz dup1.vcf.gz
+      bash /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh -d del.vcf.gz del1.vcf.gz
+      svtk vcf2bed dup1.vcf.gz dup1.bed
+      awk -v OFS="\t" '{if($3-$2>5000000)print $0}' dup1.bed >~{batch}.DUP.~{prefix}.bed
+      svtk vcf2bed del1.vcf.gz del1.bed
+      awk -v OFS="\t" '{if($3-$2>5000000)print $0}' del1.bed >~{batch}.DEL.~{prefix}.bed
+    fi
+    bgzip -f ~{batch}.DEL.~{prefix}.bed
+    tabix -f ~{batch}.DEL.~{prefix}.bed.gz
+
+    bgzip -f ~{batch}.DUP.~{prefix}.bed
+    tabix -f ~{batch}.DUP.~{prefix}.bed.gz
   >>>
   runtime {
     cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
@@ -312,7 +336,7 @@ task CNSampleNormal {
       awk -f <(echo "$col_a") bincov_~{chr}.bed | tr ' ' '\t' > bincov_~{chr}_~{mode}.bed
     fi
 
-    bash /opt/WGD/bin/cnMOPS_workflow.sh -S ~{black} -x ~{black} -r ~{r} -o . -M bincov_~{chr}_~{mode}.bed
+    bash /opt/WGD/bin/cnMOPS_workflow.sh -S ~{black} -x ~{black} -r ~{r} -o . -M bincov_~{chr}_~{mode}.bed || touch calls/cnMOPS.cnMOPS.gff
     
   >>>
   runtime {

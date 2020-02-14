@@ -17,6 +17,8 @@ workflow MergeDepth {
     Array[File] contig_ploidy_calls
     File std_cnmops_del
     File std_cnmops_dup
+    File large_cnmops_del
+    File large_cnmops_dup
     String batch
     String sv_mini_docker
     String sv_pipeline_docker
@@ -43,7 +45,7 @@ workflow MergeDepth {
       input:
         sample_id = samples[i],
         gcnv = GcnvVcfToBed.del_bed[i],
-        cnmops = std_cnmops_del,
+        cnmops = [std_cnmops_del, large_cnmops_del],
         sv_mini_docker = sv_mini_docker,
         runtime_attr_override = runtime_attr_merge_sample
     }
@@ -54,7 +56,7 @@ workflow MergeDepth {
       input:
         sample_id = samples[i],
         gcnv = GcnvVcfToBed.dup_bed[i],
-        cnmops = std_cnmops_dup,
+        cnmops = [std_cnmops_dup, large_cnmops_dup],
         sv_mini_docker = sv_mini_docker,
         runtime_attr_override = runtime_attr_merge_sample
     }
@@ -135,7 +137,7 @@ task GcnvVcfToBed {
 task MergeSample {
   input {
     File gcnv
-    File cnmops
+    Array[File] cnmops
     String sample_id
     String sv_mini_docker
     RuntimeAttr? runtime_attr_override
@@ -157,7 +159,7 @@ task MergeSample {
   command <<<
 
     set -euo pipefail
-    zcat ~{cnmops} | egrep "~{sample_id}" > cnmops.cnv
+    zcat ~{sep=" " cnmops} | egrep "~{sample_id}" > cnmops.cnv
     cat ~{gcnv} cnmops.cnv | sort -k1,1V -k2,2n > ~{sample_id}.bed
     bedtools merge -i ~{sample_id}.bed -d 0 -c 4,5,6,7 -o distinct > ~{sample_id}_merged.bed
     

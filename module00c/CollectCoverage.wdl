@@ -188,7 +188,7 @@ task CollectCounts {
       --output counts_100bp.~{sample_id}.tsv \
       ~{sep=' ' disabled_read_filters_arr}
 
-    gzip counts_100bp.~{sample_id}.tsv
+    bgzip counts_100bp.~{sample_id}.tsv
   >>>
 
   runtime {

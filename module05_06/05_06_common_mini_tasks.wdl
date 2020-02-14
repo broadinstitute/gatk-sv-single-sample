@@ -682,23 +682,3 @@ task SplitVcf {
     Array[File] vcf_shards = glob("~{prefix}*.vcf.gz")
   }
 }
-
-# create an empty list file
-task EmptyList {
-  input {
-    String linux_docker
-  }
-
-  runtime {
-    docker: linux_docker
-  }
-
-  command <<<
-    touch empty.list
-  >>>
-
-  output {
-    File empty_list_file = "empty.list"
-  }
-
-}
