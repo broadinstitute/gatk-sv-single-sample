@@ -33,7 +33,7 @@ workflow Module01 {
     Float depth_frac
     File contigs
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_pesr_cluster
     RuntimeAttr? runtime_attr_pesr_concat
@@ -56,7 +56,7 @@ workflow Module01 {
         dist = pesr_distance,
         blacklist = pesr_blacklist,
         contigs = contigs,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         runtime_attr_cluster = runtime_attr_pesr_cluster,
         runtime_attr_concat = runtime_attr_pesr_concat
@@ -76,7 +76,7 @@ workflow Module01 {
         dist = pesr_distance,
         blacklist = pesr_blacklist,
         contigs = contigs,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         runtime_attr_cluster = runtime_attr_pesr_cluster,
         runtime_attr_concat = runtime_attr_pesr_concat
@@ -96,7 +96,7 @@ workflow Module01 {
         dist = pesr_distance,
         blacklist = pesr_blacklist,
         contigs = contigs,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         runtime_attr_cluster = runtime_attr_pesr_cluster,
         runtime_attr_concat = runtime_attr_pesr_concat
@@ -116,7 +116,7 @@ workflow Module01 {
         dist = pesr_distance,
         blacklist = pesr_blacklist,
         contigs = contigs,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         runtime_attr_cluster = runtime_attr_pesr_cluster,
         runtime_attr_concat = runtime_attr_pesr_concat
@@ -133,7 +133,7 @@ workflow Module01 {
   	  blacklist = depth_blacklist,
       blacklist_frac_max = depth_blacklist_frac_max,
   	  flags = depth_flags,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       sv_pipeline_docker = sv_pipeline_docker,
   	  runtime_attr_bed_cluster = runtime_attr_depth_cluster,
   	  runtime_attr_concat = runtime_attr_depth_concat,

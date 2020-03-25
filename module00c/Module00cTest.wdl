@@ -27,9 +27,10 @@ workflow Module00cTest {
       merged_dels = Module00c.merged_dels,
       merged_dups = Module00c.merged_dups,
       median_cov = Module00c.median_cov,
-      std_manta_vcf = select_first([Module00c.std_manta_vcf]),
-      std_melt_vcf = select_first([Module00c.std_melt_vcf]),
-      std_wham_vcf = select_first([Module00c.std_wham_vcf])
+      std_delly_vcf = Module00c.std_delly_vcf,
+      std_manta_vcf = Module00c.std_manta_vcf,
+      std_melt_vcf = Module00c.std_melt_vcf,
+      std_wham_vcf = Module00c.std_wham_vcf
   }
 
   call utils.PlotMetrics {

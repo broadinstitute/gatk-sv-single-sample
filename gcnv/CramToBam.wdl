@@ -7,7 +7,7 @@ workflow CramToBam {
     File cram_file
     File reference_fasta
     File? reference_index
-    String samtools_docker
+    String samtools_cloud_docker
     Boolean requester_pays = false
     RuntimeAttr? runtime_attr_override
   }
@@ -28,7 +28,7 @@ workflow CramToBam {
         cram_file = cram_file,
         reference_fasta = reference_fasta,
         reference_index = reference_index,
-        samtools_docker = samtools_docker,
+        samtools_cloud_docker = samtools_cloud_docker,
         runtime_attr_override = runtime_attr_override
     }
   }
@@ -38,7 +38,7 @@ workflow CramToBam {
         cram_file = cram_file,
         reference_fasta = reference_fasta,
         reference_index = reference_index,
-        samtools_docker = samtools_docker,
+        samtools_cloud_docker = samtools_cloud_docker,
         runtime_attr_override = runtime_attr_override
     }
   }
@@ -54,7 +54,7 @@ task RunCramToBam {
     File cram_file
     File reference_fasta
     File? reference_index
-    String samtools_docker
+    String samtools_cloud_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -117,7 +117,7 @@ task RunCramToBam {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: samtools_docker
+    docker: samtools_cloud_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -130,7 +130,7 @@ task RunCramToBamRequesterPays {
     File cram_file
     File reference_fasta
     File? reference_index
-    String samtools_docker
+    String samtools_cloud_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -184,7 +184,7 @@ task RunCramToBamRequesterPays {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: samtools_docker
+    docker: samtools_cloud_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

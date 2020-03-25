@@ -24,7 +24,7 @@ workflow Module03 {
     Int outlier_cutoff_nIQR
 
     String sv_pipeline_docker
-    String sv_mini_docker
+    String sv_base_mini_docker
     String linux_docker
 
     RuntimeAttr? runtime_attr_adjudicate
@@ -73,7 +73,7 @@ workflow Module03 {
       samples = samples,
       algorithms = algorithms,
       sv_pipeline_docker = sv_pipeline_docker,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       linux_docker = linux_docker,
       runtime_attr_identify_outliers = runtime_attr_identify_outliers,
       runtime_attr_exclude_outliers= runtime_attr_exclude_outliers,
@@ -97,7 +97,7 @@ workflow Module03 {
       wham_vcf = FilterOutlierSamples.vcfs_noOutliers[2],
       melt_vcf = FilterOutlierSamples.vcfs_noOutliers[3],
       batch = batch,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_merge_pesr_vcfs
   }
 
@@ -129,7 +129,7 @@ task AdjudicateSV {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 7.5,
+    mem_gb: 3.75,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,
@@ -210,14 +210,14 @@ task MergePesrVcfs {
     File? wham_vcf
     File? melt_vcf
     String batch
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
     mem_gb: 3.75, 
-    disk_gb: 100,
+    disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,
     max_retries: 1
@@ -243,7 +243,7 @@ task MergePesrVcfs {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -263,7 +263,7 @@ task FilterAnnotateVcf {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 10, 
+    mem_gb: 3.75,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,

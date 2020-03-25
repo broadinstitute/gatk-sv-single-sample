@@ -22,7 +22,7 @@ workflow ClusterDepth {
     Float? blacklist_frac_max
 
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_bed_cluster
     RuntimeAttr? runtime_attr_concat
@@ -67,7 +67,7 @@ workflow ClusterDepth {
       batch = batch,
       svtype = "DEL",
       beds = BedCluster_del.clustered_bed,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_concat
   }
 
@@ -76,7 +76,7 @@ workflow ClusterDepth {
       batch = batch,
       svtype = "DUP",
       beds = BedCluster_dup.clustered_bed,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_concat
   }
 
@@ -248,7 +248,7 @@ task ConcatBeds {
     String batch
     String svtype
     Array[File] beds
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -276,7 +276,7 @@ task ConcatBeds {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

@@ -220,7 +220,7 @@ task CondenseReadCounts {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1,
-    mem_gb: 2.0,
+    mem_gb: 1.0,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,
@@ -240,6 +240,7 @@ task CondenseReadCounts {
       -O condensed_counts.~{sample}.tsv \
       --factor ~{select_first([num_bins, 20])} \
       --out-bin-length ~{select_first([expected_bin_size, 2000])}
+    sed -ri "s/@RG\tID:GATKCopyNumber\tSM:.+/@RG\tID:GATKCopyNumber\tSM:~{sample}/g" condensed_counts.~{sample}.tsv
     bgzip condensed_counts.~{sample}.tsv
   >>>
 
@@ -270,7 +271,7 @@ task CountsToIntervals {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1,
-    mem_gb: 2.0,
+    mem_gb: 1.0,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,

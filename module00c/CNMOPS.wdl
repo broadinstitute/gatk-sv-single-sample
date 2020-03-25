@@ -26,6 +26,7 @@ workflow CNMOPS {
     File allo_file
     Array[String]+ samples
     String prefix
+    Int? min_size
     Boolean? stitch_and_clean_large_events = false
     Float? mem_gb_override_sample10
     Float? mem_gb_override_sample3
@@ -153,6 +154,7 @@ workflow CNMOPS {
       FR1 = FemaleR1.Gff,
       FR2 = FemaleR2.Gff,
       prefix = prefix,
+      min_size = min_size,
       stitch_and_clean_large_events = stitch_and_clean_large_events,
       sv_pipeline_docker = sv_pipeline_docker,
       runtime_attr_override = runtime_attr_ped
@@ -213,6 +215,7 @@ task CleanCNMops {
     File FR1
     File FR2
     String prefix
+    Int? min_size = 1000000
     Boolean? stitch_and_clean_large_events = false
     File? chrom_file
     File? allo_file
@@ -260,15 +263,19 @@ task CleanCNMops {
     cat <(echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources") ~{batch}.DUP.bed  > ~{batch}.DUP.~{prefix}.bed
 
     if ~{stitch_and_clean_large_events}; then
+      mv ~{batch}.DUP.~{prefix}.bed ~{batch}.DUP.~{prefix}.prestitch.bed
+      mv ~{batch}.DEL.~{prefix}.bed ~{batch}.DEL.~{prefix}.prestitch.bed
       cat ~{chrom_file} ~{allo_file} > contig.fai
-      svtk rdtest2vcf --contigs contig.fai ~{batch}.DUP.~{prefix}.bed sample.list dup.vcf.gz
-      svtk rdtest2vcf --contigs contig.fai ~{batch}.DEL.~{prefix}.bed sample.list del.vcf.gz
+      svtk rdtest2vcf --contigs contig.fai ~{batch}.DUP.~{prefix}.prestitch.bed sample.list dup.vcf.gz
+      svtk rdtest2vcf --contigs contig.fai ~{batch}.DEL.~{prefix}.prestitch.bed sample.list del.vcf.gz
       bash /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh -d dup.vcf.gz dup1.vcf.gz
       bash /opt/sv-pipeline/04_variant_resolution/scripts/stitch_fragmented_CNVs.sh -d del.vcf.gz del1.vcf.gz
       svtk vcf2bed dup1.vcf.gz dup1.bed
-      awk -v OFS="\t" '{if($3-$2>5000000)print $0}' dup1.bed >~{batch}.DUP.~{prefix}.bed
+      cat <(echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources") \
+          <(awk -v OFS="\t" -v minsize=~{min_size} '{if($3-$2>minsize)print $1,$2,$3,$4,$6,$5,"cnmops_large"}' dup1.bed) >~{batch}.DUP.~{prefix}.bed
       svtk vcf2bed del1.vcf.gz del1.bed
-      awk -v OFS="\t" '{if($3-$2>5000000)print $0}' del1.bed >~{batch}.DEL.~{prefix}.bed
+      cat <(echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources") \
+          <(awk -v OFS="\t" -v minsize=~{min_size} '{if($3-$2>minsize)print $1,$2,$3,$4,$6,$5,"cnmops_large"}' del1.bed) >~{batch}.DEL.~{prefix}.bed
     fi
     bgzip -f ~{batch}.DEL.~{prefix}.bed
     tabix -f ~{batch}.DEL.~{prefix}.bed.gz
@@ -310,7 +317,7 @@ task CNSampleNormal {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 30,
+    mem_gb: 16,
     disk_gb: 20,
     boot_disk_gb: 10,
     preemptible_tries: 3, 

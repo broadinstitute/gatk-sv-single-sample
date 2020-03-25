@@ -30,7 +30,7 @@ workflow GenotypeDepthPart2 {
     File coveragefile
 
     String sv_pipeline_docker
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_rdtest_docker
     RuntimeAttr? runtime_attr_split_variants
     RuntimeAttr? runtime_attr_rdtest_genotype
@@ -55,7 +55,7 @@ workflow GenotypeDepthPart2 {
     input:
     vcf = cohort_vcf,
     bed = gt5kb_bed,
-    sv_mini_docker = sv_mini_docker,
+    sv_base_mini_docker = sv_base_mini_docker,
     runtime_attr_override = runtime_attr_make_subset_vcf
     }
 
@@ -119,7 +119,7 @@ workflow GenotypeDepthPart2 {
     input:
     vcf = cohort_vcf,
     bed = lt5kb_bed,
-    sv_mini_docker = sv_mini_docker,
+    sv_base_mini_docker = sv_base_mini_docker,
     runtime_attr_override = runtime_attr_make_subset_vcf
     }
 
@@ -149,7 +149,7 @@ workflow GenotypeDepthPart2 {
       bca_vcfs = [],
       batch = batch,
       evidence_type = "depth",
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_concat_vcfs
   }
   Boolean regenotype=defined(cohort_combined_bed) && defined(cohort_sort)

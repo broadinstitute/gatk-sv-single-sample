@@ -316,7 +316,7 @@ task CleanVcf2 {
   # generally assume working disk size is ~2 * inputs, and outputs are ~2 *inputs, and inputs are not removed
   # generally assume working memory is ~3 * inputs
   Float input_size = size([normal_revise_vcf, whitelist, multi_cnvs, vcftools_idx], "GB")
-  Float base_disk_gb = 50.0
+  Float base_disk_gb = 10.0
   Float base_mem_gb = 4.0
   Float input_mem_scale = 3.0
   Float input_disk_scale = 5.0

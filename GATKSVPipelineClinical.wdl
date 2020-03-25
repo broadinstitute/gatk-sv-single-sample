@@ -14,6 +14,7 @@ import "module05_06/Module05_06.wdl" as m0506
 import "gcnv/GermlineCNVCase.wdl" as gcnv
 import "ClinicalFiltering.wdl" as ClinicalFiltering
 import "GATKSVPipelineClinicalMetrics.wdl" as ClinicalMetrics
+import "Utils.wdl" as utils
 import "Structs.wdl"
 
 # GATK SV Pipeline single sample mode
@@ -30,6 +31,7 @@ workflow GATKSVPipelineClinical {
     File genome_file
     File primary_contigs_list
     File primary_contigs_fai
+    String ref_build        # Needs to be GRCh37 or hg38
     File reference_fasta
     File reference_index    # Index (.fai), must be in same dir as fasta
     File reference_dict     # Dictionary (.dict), must be in same dir as fasta
@@ -37,7 +39,7 @@ workflow GATKSVPipelineClinical {
     File autosome_file      # fai of autosomal contigs
     File allosome_file      # fai of allosomal contigs
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_base_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
@@ -48,7 +50,7 @@ workflow GATKSVPipelineClinical {
     String gatk_docker
     String condense_counts_docker
     String genomes_in_the_cloud_docker
-    String samtools_docker
+    String samtools_cloud_docker
     String manta_docker
     String wham_docker
 
@@ -127,17 +129,9 @@ workflow GATKSVPipelineClinical {
     Array[File] ref_pesr_split_files
 
     File? gatk4_jar_override
-    Int? preemptible_attempts
-
-    Int? mem_gb_for_determine_germline_contig_ploidy
-    Int? cpu_for_determine_germline_contig_ploidy
-    Int? disk_for_determine_germline_contig_ploidy
     Float? gcnv_p_alt
     Float? gcnv_cnv_coherence_length
     Int? gcnv_max_copy_number
-    Int? mem_gb_for_germline_cnv_caller
-    Int? cpu_for_germline_cnv_caller
-    Int? disk_for_germline_cnv_caller
 
     Float? gcnv_mapping_error_rate
     Float? gcnv_sample_psi_scale
@@ -166,7 +160,6 @@ workflow GATKSVPipelineClinical {
     Float? gcnv_caller_external_admixing_rate
     Boolean? gcnv_disable_annealing
 
-    Int? postprocessing_mem_gb
     Int ref_copy_number_autosomal_contigs
     Array[String]? allosomal_contigs
 
@@ -174,6 +167,8 @@ workflow GATKSVPipelineClinical {
 
     # CNMops files
     File cnmops_blacklist
+
+    Int? cnmops_large_min_size
 
     # QC files
     Int matrix_qc_distance
@@ -202,6 +197,12 @@ workflow GATKSVPipelineClinical {
     RuntimeAttr? cnmops_clean_runtime_attr
     RuntimeAttr? matrix_qc_pesrbaf_runtime_attr
     RuntimeAttr? matrix_qc_rd_runtime_attr
+
+    RuntimeAttr? runtime_attr_ploidy
+    RuntimeAttr? runtime_attr_case
+    RuntimeAttr? runtime_attr_bundle
+    RuntimeAttr? runtime_attr_postprocess
+    RuntimeAttr? runtime_attr_explode
 
     ############################################################
     ## Module 01
@@ -329,8 +330,6 @@ workflow GATKSVPipelineClinical {
     Int? clean_vcf_random_seed
     Boolean clean_vcf_include_external_benchmarking
 
-    String? sv_pipeline_docker_override_0506
-
     RuntimeAttr? runtime_override_update_sr_list
     RuntimeAttr? runtime_override_merge_pesr_depth
     RuntimeAttr? runtime_override_merge_pesr_depth
@@ -378,12 +377,12 @@ workflow GATKSVPipelineClinical {
       manta_mem_gb_per_job=manta_mem_gb_per_job,
       wham_whitelist_bed_file=wham_whitelist_bed_file,
       sv_pipeline_docker=sv_pipeline_docker,
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       manta_docker=manta_docker,
       wham_docker=wham_docker,
       gatk_docker=gatk_docker,
       genomes_in_the_cloud_docker=genomes_in_the_cloud_docker,
-      samtools_docker=samtools_docker,
+      samtools_cloud_docker=samtools_cloud_docker,
       runtime_attr_baf=runtime_attr_baf,
       runtime_attr_baf_gather=runtime_attr_baf_gather,
       runtime_attr_cram_to_bam=runtime_attr_cram_to_bam,
@@ -407,7 +406,7 @@ workflow GATKSVPipelineClinical {
       wgd_scoring_mask=wgd_scoring_mask,
       sv_pipeline_docker=sv_pipeline_docker,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_qc=runtime_attr_qc,
       runtime_attr_qc_outlier=runtime_attr_qc_outlier,
       wgd_build_runtime_attr=wgd_build_runtime_attr,
@@ -437,18 +436,11 @@ workflow GATKSVPipelineClinical {
       contig_ploidy_model_tar = contig_ploidy_model_tar,
       gcnv_model_tars = gcnv_model_tars,
       gatk4_jar_override = gatk4_jar_override,
-      preemptible_attempts = preemptible_attempts,
       run_ploidy = true,
       append_first_sample_to_ped = true,
-      mem_gb_for_determine_germline_contig_ploidy = mem_gb_for_determine_germline_contig_ploidy,
-      cpu_for_determine_germline_contig_ploidy = cpu_for_determine_germline_contig_ploidy,
-      disk_for_determine_germline_contig_ploidy = disk_for_determine_germline_contig_ploidy,
       gcnv_p_alt = gcnv_p_alt,
       gcnv_cnv_coherence_length = gcnv_cnv_coherence_length,
       gcnv_max_copy_number = gcnv_max_copy_number,
-      mem_gb_for_germline_cnv_caller = mem_gb_for_germline_cnv_caller,
-      cpu_for_germline_cnv_caller = cpu_for_germline_cnv_caller,
-      disk_for_germline_cnv_caller = disk_for_germline_cnv_caller,
       gcnv_mapping_error_rate = gcnv_mapping_error_rate,
       gcnv_sample_psi_scale = gcnv_sample_psi_scale,
       gcnv_depth_correction_tau = gcnv_depth_correction_tau,
@@ -474,7 +466,6 @@ workflow GATKSVPipelineClinical {
       gcnv_caller_internal_admixing_rate = gcnv_caller_internal_admixing_rate,
       gcnv_caller_external_admixing_rate = gcnv_caller_external_admixing_rate,
       gcnv_disable_annealing = gcnv_disable_annealing,
-      postprocessing_mem_gb = postprocessing_mem_gb,
       ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
       allosomal_contigs = allosomal_contigs,
       gcnv_qs_cutoff=gcnv_qs_cutoff,
@@ -484,8 +475,9 @@ workflow GATKSVPipelineClinical {
       cnmops_chrom_file=autosome_file,
       cnmops_blacklist=cnmops_blacklist,
       cnmops_allo_file=allosome_file,
+      cnmops_large_min_size=cnmops_large_min_size,
       matrix_qc_distance=matrix_qc_distance,
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       linux_docker=linux_docker,
@@ -514,7 +506,12 @@ workflow GATKSVPipelineClinical {
       matrix_qc_rd_runtime_attr=matrix_qc_rd_runtime_attr,
       ploidy_score_runtime_attr=ploidy_score_runtime_attr,
       ploidy_build_runtime_attr=ploidy_build_runtime_attr,
-      add_sample_to_ped_runtime_attr=add_sample_to_ped_runtime_attr
+      add_sample_to_ped_runtime_attr=add_sample_to_ped_runtime_attr,
+      runtime_attr_ploidy = runtime_attr_ploidy,
+      runtime_attr_case = runtime_attr_case,
+      runtime_attr_bundle = runtime_attr_bundle,
+      runtime_attr_postprocess = runtime_attr_postprocess,
+      runtime_attr_explode = runtime_attr_explode
   }
 
   File combined_ped_file = select_first([Module00c.combined_ped_file])
@@ -527,7 +524,7 @@ workflow GATKSVPipelineClinical {
       beds=[Module00c.merged_dels, ref_panel_del_bed],
       svtype="DEL",
       batch=batch,
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_depth_merge_pre_01
   }
   call dpn.MergeSet as MergeSetDup {
@@ -535,7 +532,7 @@ workflow GATKSVPipelineClinical {
       beds=[Module00c.merged_dups, ref_panel_dup_bed],
       svtype="DUP",
       batch=batch,
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_depth_merge_pre_01
   }
 
@@ -556,7 +553,7 @@ workflow GATKSVPipelineClinical {
       depth_flags=depth_flags,
       depth_frac=depth_frac,
       contigs=primary_contigs_fai,
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
       runtime_attr_pesr_cluster=runtime_attr_pesr_cluster,
       runtime_attr_pesr_concat=runtime_attr_pesr_concat,
@@ -572,7 +569,7 @@ workflow GATKSVPipelineClinical {
       vcf_gz=select_first([Module01.manta_vcf]),
       sample_id=sample_id,
       evidence="RD,PE,SR",
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_filter_vcf_by_id
   }
   call ClinicalFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterWham {
@@ -580,7 +577,15 @@ workflow GATKSVPipelineClinical {
       vcf_gz=select_first([Module01.wham_vcf]),
       sample_id=sample_id,
       evidence="RD,PE,SR",
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
+      runtime_attr_override=runtime_attr_filter_vcf_by_id
+  }
+  call ClinicalFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterMelt {
+    input :
+      vcf_gz=select_first([Module01.melt_vcf]),
+      sample_id=sample_id,
+      evidence="RD,PE,SR",
+      sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_filter_vcf_by_id
   }
   call ClinicalFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterDepth {
@@ -588,7 +593,7 @@ workflow GATKSVPipelineClinical {
       vcf_gz=Module01.depth_vcf,
       sample_id=sample_id,
       evidence="RD",
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_filter_vcf_by_id
   }
 
@@ -597,7 +602,7 @@ workflow GATKSVPipelineClinical {
       manta_vcf=FilterManta.out,
       wham_vcf=FilterWham.out,
       batch=batch,
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_merge_pesr_vcfs
   }
 
@@ -633,7 +638,7 @@ workflow GATKSVPipelineClinical {
       samples = SamplesList.samples_file,
       male_samples = SamplesList.male_samples,
       female_samples = SamplesList.female_samples,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       linux_docker = linux_docker,
       sv_pipeline_docker = sv_pipeline_docker,
       runtime_attr_srtest = runtime_attr_srtest,
@@ -684,7 +689,7 @@ workflow GATKSVPipelineClinical {
       PE_metrics=PE_metrics,
       bin_exclude=bin_exclude,
       bin_exclude_idx=bin_exclude_idx,
-      sv_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
       sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
       linux_docker=linux_docker,
@@ -717,101 +722,101 @@ workflow GATKSVPipelineClinical {
       sv_pipeline_docker=sv_pipeline_docker
   }
 
-  call StringArrayToListFile as FamFileListFile {
+  call utils.StringArrayToListFile as FamFileListFile {
     input:
       strings=[combined_ped_file],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as PesrListFile {
+  call utils.StringArrayToListFile as PesrListFile {
     input:
       strings=[ConvertCNVsWithoutDepthSupportToBNDs.out_vcf],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
 
   }
 
-  call StringArrayToListFile as PesrIdxListFile {
+  call utils.StringArrayToListFile as PesrIdxListFile {
     input:
       strings=[ConvertCNVsWithoutDepthSupportToBNDs.out_vcf_idx],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as DepthListFile {
+  call utils.StringArrayToListFile as DepthListFile {
     input:
       strings=[Module04.genotyped_depth_vcf],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as DepthIdxListFile {
+  call utils.StringArrayToListFile as DepthIdxListFile {
     input:
       strings=[Module04.genotyped_depth_vcf_index],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as MergedPeListFile {
+  call utils.StringArrayToListFile as MergedPeListFile {
     input:
       strings=[Module00c.merged_PE],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as MergedPeIdxListFile {
+  call utils.StringArrayToListFile as MergedPeIdxListFile {
     input:
       strings=[Module00c.merged_PE_index],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as MergedBincovListFile {
+  call utils.StringArrayToListFile as MergedBincovListFile {
     input:
       strings=[Module00c.merged_bincov],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as MergedBincovIdxListFile {
+  call utils.StringArrayToListFile as MergedBincovIdxListFile {
     input:
       strings=[Module00c.merged_bincov_index],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as MergedBatchesList {
+  call utils.StringArrayToListFile as MergedBatchesList {
     input:
       strings=[batch],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as DepthSepcutoffListFile {
+  call utils.StringArrayToListFile as DepthSepcutoffListFile {
     input:
       strings=[genotype_depth_depth_sepcutoff],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as MedianCovListFile {
+  call utils.StringArrayToListFile as MedianCovListFile {
     input:
       strings=[Module00c.median_cov],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as SamplesListListFile {
+  call utils.StringArrayToListFile as SamplesListListFile {
     input:
       strings=[SamplesList.samples_file],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as SrBothsidePassListListFile {
+  call utils.StringArrayToListFile as SrBothsidePassListListFile {
     input:
       strings=[Module04.sr_bothside_pass],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as SrBothsideFailListListFile {
+  call utils.StringArrayToListFile as SrBothsideFailListListFile {
     input:
       strings=[Module04.sr_background_fail],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call StringArrayToListFile as CutoffsListFile {
+  call utils.StringArrayToListFile as CutoffsListFile {
     input:
       strings=[cutoffs],
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
   call m0506.Module05_06 as Module0506 {
@@ -826,6 +831,7 @@ workflow GATKSVPipelineClinical {
       depth_vcf_idx_list=DepthIdxListFile.list_file,
       samples = flatten([[sample_id], read_lines(ref_panel_outliers_excluded_list)]),
       contig_list=primary_contigs_fai,
+      ref_build=ref_build,
 
       max_shards_per_chrom=clean_vcf_max_shards_per_chrom,
       min_variants_per_shard=clean_vcf_min_variants_per_shard,
@@ -866,10 +872,10 @@ workflow GATKSVPipelineClinical {
       random_seed=clean_vcf_random_seed,
       include_external_benchmarking=clean_vcf_include_external_benchmarking,
 
-      sv_pipeline_docker=select_first([sv_pipeline_docker_override_0506, sv_pipeline_docker]),
+      sv_pipeline_docker=sv_pipeline_docker,
       sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      sv_base_mini_docker=sv_mini_docker,
+      sv_base_mini_docker=sv_base_mini_docker,
 
       runtime_override_update_sr_list=runtime_override_update_sr_list,
       runtime_override_merge_pesr_depth=runtime_override_merge_pesr_depth,
@@ -889,7 +895,7 @@ workflow GATKSVPipelineClinical {
       vcf_gz=Module0506.cleaned_vcf,
       min_length=5000,
       filter_name="DEPTH_LT_5KB",
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
   call ClinicalFiltering.GetUniqueNonGenotypedDepthCalls as GetUniqueNonGenotypedDepthCalls {
@@ -898,14 +904,14 @@ workflow GATKSVPipelineClinical {
       sample_id=sample_id,
       ref_panel_dels=ref_panel_del_bed,
       ref_panel_dups=ref_panel_dup_bed,
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
   call ClinicalFiltering.FilterVcfForCaseSampleGenotype as FilterVcfForCaseSampleGenotype {
     input:
       vcf_gz=FilterVcfDepthLt5kb.out,
       sample_id=sample_id,
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
   call ClinicalFiltering.FilterVcfWithReferencePanelCalls as FilterVcfWithReferencePanelCalls {
@@ -923,7 +929,7 @@ workflow GATKSVPipelineClinical {
       clinical_vcf_idx=FilterVcfWithReferencePanelCalls.out_idx,
       filter_to_reset="HIGH_SR_BACKGROUND",
       info_header_line='##INFO=<ID=HIGH_SR_BACKGROUND,Number=0,Type=Flag,Description="Sites with high split read background">',
-      sv_mini_docker=sv_mini_docker
+      sv_base_mini_docker=sv_base_mini_docker
   }
 
   call ClinicalFiltering.ResetFilter as ResetBothsidesSupportFilter {
@@ -932,14 +938,16 @@ workflow GATKSVPipelineClinical {
         clinical_vcf_idx=ResetHighSRBackgroundFilter.out_idx,
         filter_to_reset="BOTHSIDES_SUPPORT",
         info_header_line='##INFO=<ID=BOTHSIDES_SUPPORT,Number=0,Type=Flag,Description="Sites with split read support at both breakpoints">',
-        sv_mini_docker=sv_mini_docker
+        sv_base_mini_docker=sv_base_mini_docker
     }
 
   call ClinicalFiltering.FinalVCFCleanup as FinalVCFCleanup {
     input:
       clinical_vcf=ResetBothsidesSupportFilter.out,
       clinical_vcf_idx=ResetBothsidesSupportFilter.out_idx,
-      sv_mini_docker=sv_mini_docker
+      ref_fasta=reference_fasta,
+      ref_fasta_idx=reference_index,
+      sv_pipeline_docker=sv_pipeline_docker
   }
 
   call ClinicalMetrics.ClinicalMetrics {
@@ -961,7 +969,7 @@ workflow GATKSVPipelineClinical {
       sv_pipeline_base_docker = sv_pipeline_base_docker
   }
 
-  call ClinicalQC {
+  call utils.RunQC as ClinicalQC {
     input:
       name = batch,
       metrics = ClinicalMetrics.metrics_file,
@@ -988,75 +996,4 @@ workflow GATKSVPipelineClinical {
     email: "cwhelan@broadinstitute.org"
     description: "GATK-SV pipeline for clinical WGS structural variation calling. This is a prototype version under development that is not supported."
   }
-}
-
-task StringArrayToListFile {
-  input {
-    Array[String] strings
-    String sv_mini_docker
-    RuntimeAttr? runtime_attr_override
-  }
-
-  RuntimeAttr default_attr = object {
-    cpu_cores: 1,
-    mem_gb: 3.75,
-    disk_gb: 10,
-    boot_disk_gb: 10,
-    preemptible_tries: 3,
-    max_retries: 1
-  }
-  RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
-
-  output {
-    File list_file = "list_file.list"
-  }
-
-  command <<<
-    set -euo pipefail
-    cat ~{write_lines(strings)} > list_file.list
-  >>>
-
-  runtime {
-    cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
-    memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
-    disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
-    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
-    preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
-    maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
-  }
-}
-
-
-task ClinicalQC {
-  input {
-    String name
-    File metrics
-    File qc_definitions
-    String sv_pipeline_base_docker
-    Float mem_gib = 1
-    Int disk_gb = 10
-    Int preemptible_attempts = 3
-  }
-
-  output {
-    File out = "sv_qc.~{name}.tsv"
-  }
-  command <<<
-
-    set -eu
-    svqc ~{metrics} ~{qc_definitions} raw_qc.tsv
-    grep -vw "NA" raw_qc.tsv > sv_qc.~{name}.tsv
-
-  >>>
-  runtime {
-    cpu: 1
-    memory: "~{mem_gib} GiB"
-    disks: "local-disk ~{disk_gb} HDD"
-    bootDiskSizeGb: 10
-    docker: sv_pipeline_base_docker
-    preemptible: preemptible_attempts
-    maxRetries: 1
-  }
-
 }

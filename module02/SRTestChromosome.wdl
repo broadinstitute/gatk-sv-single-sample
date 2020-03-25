@@ -29,7 +29,7 @@ workflow SRTestChromosome {
 
     String sv_pipeline_docker
     String linux_docker
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_split_vcf
     RuntimeAttr? runtime_attr_srtest
     RuntimeAttr? runtime_attr_merge_allo
@@ -46,7 +46,7 @@ workflow SRTestChromosome {
       chrom = chrom,
       split_size = split_size,
       suffix_len = select_first([suffix_len, 4]),
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_split_vcf
   }
 

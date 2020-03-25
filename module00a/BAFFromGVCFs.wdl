@@ -12,7 +12,7 @@ version 1.0
 
 import "Structs.wdl"
 
-workflow BAF {
+workflow BAFFromGVCFs {
   input {
     Array[File] gvcfs
     Array[File] gvcf_indexes
@@ -25,11 +25,12 @@ workflow BAF {
     File ref_dict
     String batch
     String gatk_docker
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_merge_vcfs
     RuntimeAttr? runtime_attr_baf_gen
     RuntimeAttr? runtime_attr_gather
+    RuntimeAttr? runtime_attr_sample
   }
 
   Array[Array[String]] chroms = read_tsv(chrom_file)
@@ -93,7 +94,7 @@ workflow BAF {
     input:
       batch = batch,
       BAF = GenerateBAF.BAF,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_gather
   }
 
@@ -102,8 +103,8 @@ workflow BAF {
       input:
         sample = sample,
         BAF = GatherBAF.out,
-        sv_mini_docker = sv_mini_docker,
-        runtime_attr_override = runtime_attr_gather
+        sv_base_mini_docker = sv_base_mini_docker,
+        runtime_attr_override = runtime_attr_sample
     }
   }
 
@@ -332,8 +333,8 @@ task GenerateBAF {
 
     set -euo pipefail
     bcftools view -M2 -v snps ~{vcf} \
-      | python /opt/sv-pipeline/02_evidence_assessment/02d_baftest/scripts/Filegenerate/scratch.py --unfiltered
-    mv mytest1.snp BAF.~{batch}.shard-~{shard}.txt
+      | python /opt/sv-pipeline/02_evidence_assessment/02d_baftest/scripts/Filegenerate/generate_baf.py --unfiltered \
+      > BAF.~{batch}.shard-~{shard}.txt
     
   >>>
   runtime {
@@ -352,7 +353,7 @@ task GatherBAF {
   input {
     String batch
     Array[File] BAF
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -382,7 +383,7 @@ task GatherBAF {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -392,7 +393,7 @@ task ScatterBAFBySample {
   input {
     File BAF
     String sample
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -415,7 +416,7 @@ task ScatterBAFBySample {
   command <<<
 
     set -euo pipefail
-    zcat ~{BAF} | fgrep -w "~{sample}" | bgzip -c > BAF.~{sample}.txt.gz
+    zcat ~{BAF} | awk -F "\t" -v OFS="\t" '{if ($4=="~{sample}") print}' | bgzip -c > BAF.~{sample}.txt.gz
     tabix -s 1 -b 2 -e 2 BAF.~{sample}.txt.gz
 
   >>>
@@ -424,7 +425,7 @@ task ScatterBAFBySample {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

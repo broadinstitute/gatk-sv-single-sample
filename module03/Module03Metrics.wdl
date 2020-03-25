@@ -12,6 +12,7 @@ workflow Module03Metrics {
     File cutoffs
     File outlier_list
     File filtered_ped_file
+    File samples_post_filtering_file
 
     File? baseline_filtered_pesr_vcf
     File? baseline_filtered_depth_vcf
@@ -21,11 +22,13 @@ workflow Module03Metrics {
     String sv_pipeline_base_docker
   }
 
+  Array[String] samples_post_filtering = read_lines(samples_post_filtering_file)
+
   call tu.VCFMetrics as PESR_VCF_Metrics {
     input:
       vcf = filtered_pesr_vcf,
       baseline_vcf = baseline_filtered_pesr_vcf,
-      samples = samples,
+      samples = samples_post_filtering,
       prefix = "filtered_pesr",
       types = "DEL,DUP,INS,INV,BND",
       contig_list = contig_list,
@@ -36,7 +39,7 @@ workflow Module03Metrics {
     input:
       vcf = filtered_depth_vcf,
       baseline_vcf = baseline_filtered_depth_vcf,
-      samples = samples,
+      samples = samples_post_filtering,
       prefix = "filtered_depth",
       types = "DEL,DUP",
       contig_list = contig_list,

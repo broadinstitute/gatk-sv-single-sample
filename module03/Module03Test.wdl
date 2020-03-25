@@ -25,6 +25,7 @@ workflow Module03Test {
       cutoffs = Module03.cutoffs,
       outlier_list = Module03.outlier_samples_excluded_file,
       filtered_ped_file = Module03.ped_file_postOutlierExclusion,
+      samples_post_filtering_file = Module03.batch_samples_postOutlierExclusion_file
   }
 
   call utils.PlotMetrics {

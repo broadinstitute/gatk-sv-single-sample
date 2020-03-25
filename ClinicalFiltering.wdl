@@ -6,7 +6,7 @@ task FilterVcfBySampleGenotypeAndAddEvidenceAnnotation {
   input {
     File vcf_gz
     String sample_id
-    String sv_mini_docker
+    String sv_base_mini_docker
     String evidence
     RuntimeAttr? runtime_attr_override
   }
@@ -49,7 +49,7 @@ task FilterVcfBySampleGenotypeAndAddEvidenceAnnotation {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -62,7 +62,7 @@ task FilterVcfForShortDepthCalls {
     Int min_length
     String filter_name
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -99,7 +99,7 @@ task FilterVcfForShortDepthCalls {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -112,7 +112,7 @@ task GetUniqueNonGenotypedDepthCalls {
     String sample_id
     File ref_panel_dels
     File ref_panel_dups
-    String sv_mini_docker
+    String sv_base_mini_docker
 
     RuntimeAttr? runtime_attr_override
   }
@@ -157,7 +157,7 @@ task GetUniqueNonGenotypedDepthCalls {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -167,7 +167,7 @@ task FilterVcfForCaseSampleGenotype {
   input {
     File vcf_gz
     String sample_id
-    String sv_mini_docker
+    String sv_base_mini_docker
 
     RuntimeAttr? runtime_attr_override
   }
@@ -204,7 +204,7 @@ task FilterVcfForCaseSampleGenotype {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -393,7 +393,7 @@ task ResetFilter {
     String filter_to_reset
     String info_header_line
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -438,7 +438,7 @@ task ResetFilter {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -448,8 +448,10 @@ task FinalVCFCleanup {
   input {
     File clinical_vcf
     File clinical_vcf_idx
+    File ref_fasta
+    File ref_fasta_idx
 
-    String sv_mini_docker
+    String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -481,7 +483,12 @@ task FinalVCFCleanup {
      bcftools annotate \
         -a bad_ends.txt.gz \
         -c CHROM,POS,REF,ALT,END \
-        ~{clinical_vcf} | bgzip -c > ~{outfile}
+        ~{clinical_vcf} | bgzip -c > fix_bad_ends.vcf.gz
+
+     /opt/sv-pipeline/scripts/clinical/update_variant_representations.py fix_bad_ends.vcf.gz ~{ref_fasta} \
+        | vcf-sort -c \
+        | bgzip -c > ~{outfile}
+
      tabix ~{outfile}
   >>>
   runtime {
@@ -489,7 +496,7 @@ task FinalVCFCleanup {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_pipeline_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -553,7 +560,7 @@ task ConvertCNVsWithoutDepthSupportToBNDs {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1,
-    mem_gb: 10,
+    mem_gb: 3.5,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,
@@ -562,7 +569,7 @@ task ConvertCNVsWithoutDepthSupportToBNDs {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
   String filebase = basename(genotyped_pesr_vcf, ".vcf.gz")
-  String outfile = "~{filebase}.final_cleanup.vcf.gz"
+  String outfile = "~{filebase}.convert_cnvs_to_bnd.vcf.gz"
 
   output {
     File out_vcf = "~{outfile}"
@@ -594,3 +601,4 @@ task ConvertCNVsWithoutDepthSupportToBNDs {
   }
 
 }
+

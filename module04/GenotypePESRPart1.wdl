@@ -33,7 +33,7 @@ workflow GenotypePESRPart1 {
     Int n_per_SR_split
     String reference_build  #hg19 or hg38
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
 
@@ -75,7 +75,7 @@ workflow GenotypePESRPart1 {
       seed_cutoffs = seed_cutoffs,
       reference_build = reference_build,
       samples = samples,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       sv_pipeline_docker = sv_pipeline_docker,
       sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
       runtime_attr_training_bed = runtime_attr_training_bed,
@@ -99,7 +99,7 @@ workflow GenotypePESRPart1 {
       discfile = discfile,
       samples = samples,
       batch_ID = batch,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       sv_pipeline_docker = sv_pipeline_docker,
       sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
       runtime_attr_split_vcf = runtime_attr_split_vcf,
@@ -121,7 +121,7 @@ workflow GenotypePESRPart1 {
       PE_genotypes = TrainPEGenotyping.PE_genotypes,
       samples = samples,
       batch_ID = batch,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       sv_pipeline_docker = sv_pipeline_docker,
       sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
       runtime_attr_split_vcf = runtime_attr_split_vcf,

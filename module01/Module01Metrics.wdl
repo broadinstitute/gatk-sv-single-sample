@@ -8,11 +8,13 @@ workflow Module01Metrics {
     String name
 
     File depth_vcf
+    File? delly_vcf
     File? manta_vcf
     File? wham_vcf
     File? melt_vcf
 
     File? baseline_depth_vcf
+    File? baseline_delly_vcf
     File? baseline_manta_vcf
     File? baseline_wham_vcf
     File? baseline_melt_vcf
@@ -31,6 +33,18 @@ workflow Module01Metrics {
       types = "DEL,DUP",
       contig_list = contig_list,
       sv_pipeline_base_docker = sv_pipeline_base_docker
+  }
+  if (defined(delly_vcf)) {
+    call tu.VCFMetrics as delly_metrics {
+      input:
+        vcf = select_first([delly_vcf]),
+        baseline_vcf = baseline_delly_vcf,
+        samples = samples,
+        prefix = "delly_clustered",
+        types = "DEL,DUP,INS,INV,BND",
+        contig_list = contig_list,
+        sv_pipeline_base_docker = sv_pipeline_base_docker
+    }
   }
   if (defined(manta_vcf)) {
     call tu.VCFMetrics as manta_metrics {
@@ -72,7 +86,7 @@ workflow Module01Metrics {
   call tu.CatMetrics {
     input:
       prefix = "module01." + name,
-      metric_files = select_all([depth_metrics.out, manta_metrics.out, melt_metrics.out, wham_metrics.out]),
+      metric_files = select_all([depth_metrics.out, delly_metrics.out, manta_metrics.out, melt_metrics.out, wham_metrics.out]),
       linux_docker = linux_docker
   }
 

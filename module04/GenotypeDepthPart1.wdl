@@ -26,7 +26,7 @@ workflow GenotypeDepthPart1 {
     Int n_per_RD_split      # number of variants per RdTest split
     String reference_build  #hg19 or hg38
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_rdtest_docker
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_training_bed
@@ -53,7 +53,7 @@ workflow GenotypeDepthPart1 {
       n_per_split = n_per_RD_split,
       vcf = batch_vcf,
       famfile = famfile,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       sv_pipeline_docker = sv_pipeline_docker,
       sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
       runtime_attr_training_bed = runtime_attr_training_bed,

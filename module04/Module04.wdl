@@ -15,7 +15,6 @@ import "GenotypeDepthPart2_regeno.wdl" as gd2_r
 import "Tasks04.wdl" as tasks04
 workflow Module04 {
   input {
-    File bin_exclude
     File batch_depth_vcf
     File cohort_pesr_vcf
     File cohort_depth_vcf
@@ -23,7 +22,6 @@ workflow Module04 {
     Int n_per_split
 
     Array[String] samples   # post-exclusion samples list
-    File bin_exclude_idx
     File batch_pesr_vcf
     File coveragefile       # batch coverage file
     File medianfile         # post-exclusion batch median file
@@ -37,6 +35,8 @@ workflow Module04 {
     String? reference_build  #hg19 or hg38, Required unless skipping training
     File? cohort_combined_bed
     File? cohort_sort
+    File bin_exclude
+    File bin_exclude_idx
     # If all specified, training will be skipped (for clinical pipeline)
     File? genotype_pesr_pesr_sepcutoff
     File? genotype_pesr_depth_sepcutoff
@@ -46,7 +46,7 @@ workflow Module04 {
     File? PE_metrics
 
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
     String linux_docker
@@ -136,7 +136,7 @@ workflow Module04 {
         splitfile = splitfile,
         n_per_RD_split = n_per_split,
         n_per_SR_split = n_per_split,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
         runtime_attr_split_vcf = runtime_attr_split_vcf,
@@ -174,7 +174,7 @@ workflow Module04 {
       n_per_split = n_per_split,
       famfile = famfile,
       splitfile = splitfile,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       sv_pipeline_docker = sv_pipeline_docker,
       sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
       linux_docker = linux_docker,
@@ -208,7 +208,7 @@ workflow Module04 {
         reference_build = select_first([reference_build]),
         famfile = famfile,
         n_per_RD_split = n_per_split,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
         runtime_attr_training_bed = runtime_attr_training_bed,
@@ -236,7 +236,7 @@ workflow Module04 {
       famfile = famfile,
       cohort_combined_bed=cohort_combined_bed,
       cohort_sort=cohort_sort,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       sv_pipeline_docker = sv_pipeline_docker,
       sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
       runtime_attr_split_variants = runtime_attr_split_variants,

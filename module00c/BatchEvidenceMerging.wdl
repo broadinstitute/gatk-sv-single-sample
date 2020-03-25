@@ -24,7 +24,7 @@ workflow EvidenceMerging {
     Int? SR_size_mb
 
     Int? disk_overhead_gb   # Fixed extra disk
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_pesr   # Struct disk space is ignored
   }
 
@@ -46,7 +46,7 @@ workflow EvidenceMerging {
         evidence = "BAF",
         inclusion_bed = inclusion_bed,
         disk_gb_override = BAF_disk_gb,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         runtime_attr_override = runtime_attr_pesr
     }
   }
@@ -68,7 +68,7 @@ workflow EvidenceMerging {
       evidence = "SR",
       inclusion_bed = inclusion_bed,
       disk_gb_override = SR_disk_gb,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_pesr
   }
   call MergeEvidenceFiles as MergePEFiles {
@@ -79,7 +79,7 @@ workflow EvidenceMerging {
       evidence = "PE",
       inclusion_bed = inclusion_bed,
       disk_gb_override = PE_disk_gb,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_pesr
   }
 
@@ -101,7 +101,7 @@ task MergeEvidenceFiles {
     String evidence
     File inclusion_bed
     Int? disk_gb_override  # Overrides runtime_attr
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -151,7 +151,7 @@ task MergeEvidenceFiles {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([disk_gb_override, runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

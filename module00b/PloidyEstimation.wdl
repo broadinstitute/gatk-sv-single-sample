@@ -14,7 +14,7 @@ workflow Ploidy {
   input {
     File bincov_matrix
     String batch
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_qc_docker
     RuntimeAttr? runtime_attr_score
     RuntimeAttr? runtime_attr_build
@@ -27,7 +27,7 @@ workflow Ploidy {
       bincov_matrix = bincov_matrix,
       batch = batch,
       bin_size = bin_size,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_build
   }
 
@@ -50,7 +50,7 @@ task BuildPloidyMatrix {
     File bincov_matrix
     Int bin_size
     String batch
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -91,7 +91,7 @@ task BuildPloidyMatrix {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
