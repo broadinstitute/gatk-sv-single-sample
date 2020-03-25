@@ -6,7 +6,7 @@ version 1.0
 # Contact: Ryan Collins <rlcollins@g.harvard.edu>
 # Distributed under terms of the MIT license.
 
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "common_mini_tasks.wdl" as MiniTasks
 
 # Workflow to gather lists of variant IDs per sample from an SV VCF
 workflow CollectQcPerSample {

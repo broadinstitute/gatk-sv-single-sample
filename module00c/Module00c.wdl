@@ -60,17 +60,9 @@ workflow Module00c {
     Array[File] gcnv_model_tars
 
     File? gatk4_jar_override
-    Int? preemptible_attempts
-
-    Int? mem_gb_for_determine_germline_contig_ploidy
-    Int? cpu_for_determine_germline_contig_ploidy
-    Int? disk_for_determine_germline_contig_ploidy
     Float? gcnv_p_alt
     Float? gcnv_cnv_coherence_length
     Int? gcnv_max_copy_number
-    Int? mem_gb_for_germline_cnv_caller
-    Int? cpu_for_germline_cnv_caller
-    Int? disk_for_germline_cnv_caller
 
     Float? gcnv_mapping_error_rate
     Float? gcnv_sample_psi_scale
@@ -100,7 +92,6 @@ workflow Module00c {
     Boolean? gcnv_disable_annealing
 
     Float? ploidy_sample_psi_scale
-    Int? postprocessing_mem_gb
     Int ref_copy_number_autosomal_contigs
     Array[String]? allosomal_contigs
 
@@ -122,6 +113,8 @@ workflow Module00c {
     File cnmops_chrom_file
     File cnmops_blacklist
     File cnmops_allo_file
+    Int? cnmops_large_min_size      # minimum size call to be detected by CNMOPS running in large mode
+
     # Resolve files
     File cytoband
     File cytoband_idx
@@ -130,7 +123,7 @@ workflow Module00c {
     Int matrix_qc_distance
 
     # Runtime parameters
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     String sv_pipeline_qc_docker
     String linux_docker
@@ -165,6 +158,12 @@ workflow Module00c {
     RuntimeAttr? cnmops_clean_runtime_attr
     RuntimeAttr? matrix_qc_pesrbaf_runtime_attr
     RuntimeAttr? matrix_qc_rd_runtime_attr
+
+    RuntimeAttr? runtime_attr_ploidy
+    RuntimeAttr? runtime_attr_case
+    RuntimeAttr? runtime_attr_bundle
+    RuntimeAttr? runtime_attr_postprocess
+    RuntimeAttr? runtime_attr_explode
   }
 
   Array[String] all_samples = flatten(select_all([samples, ref_panel_samples]))
@@ -180,7 +179,7 @@ workflow Module00c {
       batch = batch,
       disk_overhead_gb = evidence_merging_disk_overhead_gb,
       bincov_size_mb = evidence_merging_bincov_size_mb,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = evidence_merging_bincov_runtime_attr
   }
 
@@ -189,7 +188,7 @@ workflow Module00c {
       input:
         bincov_matrix = MakeBincovMatrix.merged_bincov,
         batch = batch,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         sv_pipeline_qc_docker = sv_pipeline_qc_docker,
         runtime_attr_score = ploidy_score_runtime_attr,
         runtime_attr_build = ploidy_build_runtime_attr
@@ -202,7 +201,7 @@ workflow Module00c {
         ref_ped_file = ped_file,
         ploidy_plots = select_first([Ploidy.ploidy_plots]),
         sample_id = samples[0],
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         runtime_attr_override = add_sample_to_ped_runtime_attr
     }
   }
@@ -218,7 +217,7 @@ workflow Module00c {
       PE_size_mb = evidence_merging_PE_size_mb,
       SR_size_mb = evidence_merging_SR_size_mb,
       disk_overhead_gb = evidence_merging_disk_overhead_gb,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_pesr = evidence_merging_pesr_runtime_attr
   }
 
@@ -260,6 +259,7 @@ workflow Module00c {
       blacklist = cnmops_blacklist,
       allo_file = cnmops_allo_file,
       prefix = "large",
+      min_size=cnmops_large_min_size,
       stitch_and_clean_large_events = true,
       mem_gb_override_sample10 = cnmops_mem_gb_override_sample10,
       mem_gb_override_sample3 = cnmops_mem_gb_override_sample3,
@@ -292,17 +292,11 @@ workflow Module00c {
       gcnv_model_tars = gcnv_model_tars,
       gatk_docker = gatk_docker,
       linux_docker = linux_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       gatk4_jar_override = gatk4_jar_override,
-      preemptible_attempts = preemptible_attempts,
-      mem_gb_for_determine_germline_contig_ploidy = mem_gb_for_determine_germline_contig_ploidy,
-      cpu_for_determine_germline_contig_ploidy = cpu_for_determine_germline_contig_ploidy,
-      disk_for_determine_germline_contig_ploidy = disk_for_determine_germline_contig_ploidy,
       gcnv_p_alt = gcnv_p_alt,
       gcnv_cnv_coherence_length = gcnv_cnv_coherence_length,
       gcnv_max_copy_number = gcnv_max_copy_number,
-      mem_gb_for_germline_cnv_caller = mem_gb_for_germline_cnv_caller,
-      cpu_for_germline_cnv_caller = cpu_for_germline_cnv_caller,
-      disk_for_germline_cnv_caller = disk_for_germline_cnv_caller,
       gcnv_mapping_error_rate = gcnv_mapping_error_rate,
       gcnv_sample_psi_scale = gcnv_sample_psi_scale,
       gcnv_depth_correction_tau = gcnv_depth_correction_tau,
@@ -328,9 +322,13 @@ workflow Module00c {
       gcnv_caller_internal_admixing_rate = gcnv_caller_internal_admixing_rate,
       gcnv_caller_external_admixing_rate = gcnv_caller_external_admixing_rate,
       gcnv_disable_annealing = gcnv_disable_annealing,
-      postprocessing_mem_gb = postprocessing_mem_gb,
       ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
-      allosomal_contigs = allosomal_contigs
+      allosomal_contigs = allosomal_contigs,
+      runtime_attr_ploidy = runtime_attr_ploidy,
+      runtime_attr_case = runtime_attr_case,
+      runtime_attr_bundle = runtime_attr_bundle,
+      runtime_attr_postprocess = runtime_attr_postprocess,
+      runtime_attr_explode = runtime_attr_explode
   }
 
   call dpn.MergeDepth as MergeDepth {
@@ -341,11 +339,11 @@ workflow Module00c {
       gcnv_qs_cutoff = gcnv_qs_cutoff,
       std_cnmops_del = CNMOPS.Del,
       std_cnmops_dup = CNMOPS.Dup,
-      large_cnmops_del = CNMOPS.Del,
-      large_cnmops_dup = CNMOPS.Dup,
+      large_cnmops_del = CNMOPSLarge.Del,
+      large_cnmops_dup = CNMOPSLarge.Dup,
       batch = batch,
       sv_pipeline_docker = sv_pipeline_docker,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_merge_sample = depth_merge_sample_runtime_attr,
       runtime_attr_merge_set = depth_merge_set_runtime_attr
   }
@@ -446,6 +444,8 @@ workflow Module00c {
     File? SR_stats = MatrixQC.SR_stats
     File? BAF_stats = MatrixQC.BAF_stats
     File? Matrix_QC_plot = MatrixQC.QC_plot
+
+    Array[File]? manta_tloc = TinyResolve.tloc_manta_vcf
   }
 }
 
@@ -454,7 +454,7 @@ task AddCaseSampleToPed {
     File ref_ped_file
     File ploidy_plots
     String sample_id
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -493,7 +493,7 @@ task AddCaseSampleToPed {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

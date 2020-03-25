@@ -28,7 +28,7 @@ workflow SRTest {
 
     String sv_pipeline_docker
     String linux_docker
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_sex_list
     RuntimeAttr? runtime_attr_split_vcf
     RuntimeAttr? runtime_attr_srtest
@@ -55,7 +55,7 @@ workflow SRTest {
         male_samples = male_samples,
         female_samples = female_samples,
         allosome = false,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         linux_docker = linux_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         runtime_attr_split_vcf = runtime_attr_split_vcf,
@@ -81,7 +81,7 @@ workflow SRTest {
         male_samples = male_samples,
         female_samples = female_samples,
         allosome = true,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         linux_docker = linux_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         runtime_attr_split_vcf = runtime_attr_split_vcf,

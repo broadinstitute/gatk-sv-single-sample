@@ -22,15 +22,12 @@ workflow TrainGCNV {
     Int? condense_bin_size
 
     # gCNV common inputs
-    Int? gcnv_preemptible_attempts
     Int ref_copy_number_autosomal_contigs
     Array[String]? allosomal_contigs
 
     # Interval filtering inputs
     File? blacklist_intervals_for_filter_intervals_ploidy
     File? blacklist_intervals_for_filter_intervals_cnv
-    Int? disk_space_gb_for_filter_intervals
-    Int? mem_gb_for_filter_intervals
 
     # gCNV cohort mode inputs
     Boolean? filter_intervals
@@ -38,10 +35,6 @@ workflow TrainGCNV {
     Int num_intervals_per_scatter
     Boolean? do_explicit_gc_correction
     Boolean? gcnv_enable_bias_factors
-    Int? mem_gb_for_determine_germline_contig_ploidy
-    Int? cpu_for_determine_germline_contig_ploidy
-    Int? mem_gb_for_gcnv_cohort_caller
-    Int? cpu_for_gcnv_cohort_caller
 
     # gCNV additional arguments
     Float? gcnv_learning_rate
@@ -70,7 +63,6 @@ workflow TrainGCNV {
     Float? ploidy_global_psi_scale
     Float? ploidy_mean_bias_standard_deviation
     Float? gcnv_depth_correction_tau
-    Int? postprocessing_mem_gb
 
     # gCNV model building arguments
     Float? gcnv_model_learning_rate
@@ -85,7 +77,7 @@ workflow TrainGCNV {
     Int? gcnv_model_log_emission_sampling_rounds
 
     # Docker
-    String sv_mini_docker
+    String sv_base_mini_docker
     String linux_docker
     String gatk_docker
     String condense_counts_docker
@@ -93,6 +85,14 @@ workflow TrainGCNV {
     # Runtime configuration overrides
     RuntimeAttr? condense_counts_runtime_attr
     RuntimeAttr? counts_to_intervals_runtime_attr
+    RuntimeAttr? runtime_attr_annotate
+    RuntimeAttr? runtime_attr_filter
+    RuntimeAttr? runtime_attr_scatter
+    RuntimeAttr? runtime_attr_ploidy
+    RuntimeAttr? runtime_attr_cohort
+    RuntimeAttr? runtime_attr_bundle
+    RuntimeAttr? runtime_attr_postprocess
+    RuntimeAttr? runtime_attr_explode
   }
 
   scatter (i in range(length(samples))) {
@@ -129,18 +129,13 @@ workflow TrainGCNV {
       ref_fasta = reference_fasta,
       blacklist_intervals_for_filter_intervals_ploidy=blacklist_intervals_for_filter_intervals_ploidy,
       blacklist_intervals_for_filter_intervals_cnv=blacklist_intervals_for_filter_intervals_cnv,
-      disk_space_gb_for_filter_intervals = disk_space_gb_for_filter_intervals,
-      mem_gb_for_filter_intervals = mem_gb_for_filter_intervals,
       do_explicit_gc_correction = do_explicit_gc_correction,
       gcnv_enable_bias_factors = gcnv_enable_bias_factors,
       ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
       allosomal_contigs = allosomal_contigs,
-      mem_gb_for_determine_germline_contig_ploidy = mem_gb_for_determine_germline_contig_ploidy,
-      mem_gb_for_germline_cnv_caller = mem_gb_for_gcnv_cohort_caller,
-      cpu_for_germline_cnv_caller = cpu_for_gcnv_cohort_caller,
       gatk_docker = gatk_docker,
       linux_docker = linux_docker,
-      preemptible_attempts = gcnv_preemptible_attempts,
+      sv_base_mini_docker = sv_base_mini_docker,
       gcnv_learning_rate = gcnv_learning_rate,
       gcnv_max_advi_iter_first_epoch = gcnv_max_advi_iter_first_epoch,
       gcnv_num_thermal_advi_iters = gcnv_model_num_thermal_advi_iters,
@@ -166,7 +161,14 @@ workflow TrainGCNV {
       ploidy_global_psi_scale = ploidy_global_psi_scale,
       ploidy_mean_bias_standard_deviation = ploidy_mean_bias_standard_deviation,
       gcnv_depth_correction_tau = gcnv_depth_correction_tau,
-      postprocessing_mem_gb = postprocessing_mem_gb
+      runtime_attr_annotate = runtime_attr_annotate,
+      runtime_attr_filter = runtime_attr_filter,
+      runtime_attr_scatter = runtime_attr_scatter,
+      runtime_attr_ploidy = runtime_attr_ploidy,
+      runtime_attr_cohort = runtime_attr_cohort,
+      runtime_attr_bundle = runtime_attr_bundle,
+      runtime_attr_postprocess = runtime_attr_postprocess,
+      runtime_attr_explode = runtime_attr_explode
   }
 
   output {

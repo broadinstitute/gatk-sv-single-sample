@@ -24,7 +24,7 @@ workflow TrainSRGenotyping {
     File PE_train
     File PE_genotypes
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
     RuntimeAttr? runtime_attr_split_vcf
@@ -39,7 +39,7 @@ workflow TrainSRGenotyping {
       n_per_split = n_per_split,
       evidence_type = "sr",
       bgzip = true,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_split_vcf
   }
 
@@ -60,7 +60,7 @@ workflow TrainSRGenotyping {
       count_list = CountSR.sr_counts,
       sum_list = CountSR.sr_sum,
       evidence_type = "sr",
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_merge_counts
   }
 

@@ -20,7 +20,7 @@ workflow MergeDepth {
     File large_cnmops_del
     File large_cnmops_dup
     String batch
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     Int gcnv_qs_cutoff
     RuntimeAttr? runtime_attr_merge_sample
@@ -46,7 +46,7 @@ workflow MergeDepth {
         sample_id = samples[i],
         gcnv = GcnvVcfToBed.del_bed[i],
         cnmops = [std_cnmops_del, large_cnmops_del],
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         runtime_attr_override = runtime_attr_merge_sample
     }
   }
@@ -57,7 +57,7 @@ workflow MergeDepth {
         sample_id = samples[i],
         gcnv = GcnvVcfToBed.dup_bed[i],
         cnmops = [std_cnmops_dup, large_cnmops_dup],
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         runtime_attr_override = runtime_attr_merge_sample
     }
   }
@@ -67,7 +67,7 @@ workflow MergeDepth {
       beds = MergeSample_del.sample_bed,
       svtype = "DEL",
       batch = batch,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_merge_set
   }
 
@@ -76,7 +76,7 @@ workflow MergeDepth {
       beds = MergeSample_dup.sample_bed,
       svtype = "DUP",
       batch = batch,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_merge_set
   }
   output{
@@ -139,7 +139,7 @@ task MergeSample {
     File gcnv
     Array[File] cnmops
     String sample_id
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -159,7 +159,7 @@ task MergeSample {
   command <<<
 
     set -euo pipefail
-    zcat ~{sep=" " cnmops} | egrep "~{sample_id}" > cnmops.cnv
+    zcat ~{sep=" " cnmops} | awk '{if ($5=="~{sample_id}") print}' > cnmops.cnv
     cat ~{gcnv} cnmops.cnv | sort -k1,1V -k2,2n > ~{sample_id}.bed
     bedtools merge -i ~{sample_id}.bed -d 0 -c 4,5,6,7 -o distinct > ~{sample_id}_merged.bed
     
@@ -169,7 +169,7 @@ task MergeSample {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -181,7 +181,7 @@ task MergeSet {
     Array[File] beds
     String svtype
     String batch
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -224,7 +224,7 @@ task MergeSet {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

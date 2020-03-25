@@ -59,7 +59,7 @@ task SplitVcf {
     Int n_per_split
     String evidence_type    # pe or sr
     Boolean bgzip           # bgzip output (for SR)
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -96,7 +96,7 @@ task SplitVcf {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -158,7 +158,7 @@ task MakeSubsetVcf {
   input {
     File vcf
     File bed
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -190,7 +190,7 @@ task MakeSubsetVcf {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -203,7 +203,7 @@ task ConcatGenotypedVcfs {
     Array[File] bca_vcfs
     String batch
     String evidence_type    # depth or pesr
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -235,7 +235,7 @@ task ConcatGenotypedVcfs {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
@@ -246,7 +246,7 @@ task MergePESRCounts {
     Array[File]+ count_list
     Array[File] sum_list
     String evidence_type    # pe or sr
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -277,7 +277,7 @@ task MergePESRCounts {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

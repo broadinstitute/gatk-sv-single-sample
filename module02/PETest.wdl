@@ -26,7 +26,7 @@ workflow PETest {
     File female_samples
     File samples
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String linux_docker
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_sex_list
@@ -54,7 +54,7 @@ workflow PETest {
         male_samples = male_samples,
         female_samples = female_samples,
         allosome = false,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         linux_docker = linux_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         runtime_attr_split_vcf = runtime_attr_split_vcf,
@@ -79,7 +79,7 @@ workflow PETest {
         male_samples = male_samples,
         female_samples = female_samples,
         allosome = true,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         linux_docker = linux_docker,
         sv_pipeline_docker = sv_pipeline_docker,
         runtime_attr_split_vcf = runtime_attr_split_vcf,

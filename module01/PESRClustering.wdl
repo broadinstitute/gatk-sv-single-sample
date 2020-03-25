@@ -23,7 +23,7 @@ workflow ClusterPESR {
     Int dist
     String flags
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_cluster
     RuntimeAttr? runtime_attr_concat
@@ -53,7 +53,7 @@ workflow ClusterPESR {
       vcfs = VCFCluster.clustered_vcf,
       batch = batch,
       algorithm = algorithm,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_concat
   }
 
@@ -127,7 +127,7 @@ task ConcatVCFs {
     Array[File] vcfs
     String batch
     String algorithm
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -157,7 +157,7 @@ task ConcatVCFs {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

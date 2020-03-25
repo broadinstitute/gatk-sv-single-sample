@@ -250,13 +250,14 @@ task BincovMetrics {
   }
 
   File samples_list = write_lines(samples)
+  String low_mem_mode_arg = if length(samples) > 10 then "--low-mem-mode" else ""
 
   output {
     File out = "bincov-matrix.tsv"
   }
   command <<<
 
-    svtest bincov-matrix ~{bincov_matrix} ~{samples_list} > bincov-matrix.tsv
+    svtest bincov-matrix ~{bincov_matrix} ~{samples_list} ~{low_mem_mode_arg} > bincov-matrix.tsv
 
   >>>
   runtime {

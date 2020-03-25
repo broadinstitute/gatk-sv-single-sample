@@ -6,7 +6,7 @@
 
 ##########################################################################################
 
-import "master_SV_VCF_QC.wdl" as vcf_qc
+import "master_vcf_qc.wdl" as vcf_qc
 
 workflow variant_filtering_qc {
 
@@ -18,9 +18,9 @@ workflow variant_filtering_qc {
   String batch
   File famfile
   String ref_build
-  File Sanders_2015_tarball
-  File Collins_2017_tarball
-  File Werling_2018_tarball
+  File? Sanders_2015_tarball
+  File? Collins_2017_tarball
+  File? Werling_2018_tarball
 
 call vcf_qc.master_vcf_qc as delly_qc {
     input:

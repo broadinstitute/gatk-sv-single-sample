@@ -37,7 +37,7 @@ workflow Delly {
     File blacklist_intervals_file
     Array[String]? sv_types
     Int? read_pairs
-    String sv_mini_docker
+    String sv_base_mini_docker
     String delly_docker
     RuntimeAttr? runtime_attr_delly
     RuntimeAttr? runtime_attr_gather
@@ -81,7 +81,7 @@ workflow Delly {
     input:
       bcfs = RunDelly.bcf,
       sample_id = sample_id,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_gather
   }
 
@@ -142,7 +142,6 @@ task RunDelly {
     mem_gb: mem_size_gb, 
     disk_gb: vm_disk_size,
     boot_disk_gb: 10,
-    docker: "gatksv/delly:v0.1",
     preemptible_tries: 0,
     max_retries: 1
   }
@@ -182,7 +181,7 @@ task GatherBCFs {
   input {
     Array[File]+ bcfs
     String sample_id
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -232,7 +231,7 @@ task GatherBCFs {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

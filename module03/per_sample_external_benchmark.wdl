@@ -6,7 +6,7 @@ version 1.0
 # Contact: Ryan Collins <rlcollins@g.harvard.edu>
 # Distributed under terms of the MIT license.
 
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "common_mini_tasks.wdl" as MiniTasks
 
 # Workflow to perform per-sample benchmarking from an SV VCF vs an external dataset
 workflow PerSampleExternalBenchmark {

@@ -27,7 +27,7 @@ workflow TrainRDGenotyping {
     Int n_per_split         # number of variants per RdTest split
     String reference_build  #hg19 or hg38
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_rdtest_docker
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_training_bed
@@ -77,7 +77,7 @@ workflow TrainRDGenotyping {
     input:
       rf_cutoffs = rf_cutoffs,
       gt_cutoffs = GenerateCutoff.cutoffs,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_update_cutoff
   }
 
@@ -196,7 +196,7 @@ task UpdateCutoff {
   input {
     File rf_cutoffs
     File gt_cutoffs
-    String sv_mini_docker
+    String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
 
@@ -228,7 +228,7 @@ task UpdateCutoff {
     memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
     disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
     bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
-    docker: sv_mini_docker
+    docker: sv_base_mini_docker
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }

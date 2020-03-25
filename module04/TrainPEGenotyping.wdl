@@ -24,7 +24,7 @@ workflow TrainPEGenotyping {
     File RD_melted_genotypes
     File blacklist
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
     RuntimeAttr? runtime_attr_split_vcf
@@ -40,7 +40,7 @@ workflow TrainPEGenotyping {
       n_per_split = n_per_split,
       evidence_type = "pe",
       bgzip = false,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_split_vcf
   }
 
@@ -69,7 +69,7 @@ workflow TrainPEGenotyping {
       count_list = CountPE.pe_counts,
       sum_list = [],
       evidence_type = "pe",
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_merge_counts
   }
 

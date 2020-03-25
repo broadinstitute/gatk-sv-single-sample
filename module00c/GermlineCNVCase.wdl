@@ -37,21 +37,18 @@ workflow CNVGermlineCaseWorkflow {
       Array[File] gcnv_model_tars
       String gatk_docker
       String linux_docker
+      String sv_base_mini_docker
 
       ##################################
       #### optional basic arguments ####
       ##################################
       File? gatk4_jar_override
-      Int? preemptible_attempts
 
       ######################################################################
       #### optional arguments for DetermineGermlineContigPloidyCaseMode ####
       ######################################################################
       Float? ploidy_mapping_error_rate
       Float? ploidy_sample_psi_scale
-      Int? mem_gb_for_determine_germline_contig_ploidy
-      Int? cpu_for_determine_germline_contig_ploidy
-      Int? disk_for_determine_germline_contig_ploidy
 
       ##########################################################
       #### optional arguments for GermlineCNVCallerCaseMode ####
@@ -59,9 +56,6 @@ workflow CNVGermlineCaseWorkflow {
       Float? gcnv_p_alt
       Float? gcnv_cnv_coherence_length
       Int? gcnv_max_copy_number
-      Int? mem_gb_for_germline_cnv_caller
-      Int? cpu_for_germline_cnv_caller
-      Int? disk_for_germline_cnv_caller
 
       # optional arguments for germline CNV denoising model
       Float? gcnv_mapping_error_rate
@@ -95,9 +89,17 @@ workflow CNVGermlineCaseWorkflow {
       ###################################################
       #### arguments for PostprocessGermlineCNVCalls ####
       ###################################################
-      Int? postprocessing_mem_gb
       Int ref_copy_number_autosomal_contigs
       Array[String]? allosomal_contigs
+
+      ############################
+      #### Runtime attributes ####
+      ############################
+      RuntimeAttr? runtime_attr_ploidy
+      RuntimeAttr? runtime_attr_case
+      RuntimeAttr? runtime_attr_bundle
+      RuntimeAttr? runtime_attr_postprocess
+      RuntimeAttr? runtime_attr_explode
     }
 
     call DetermineGermlineContigPloidyCaseMode {
@@ -106,12 +108,9 @@ workflow CNVGermlineCaseWorkflow {
             contig_ploidy_model_tar = contig_ploidy_model_tar,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
-            mem_gb = mem_gb_for_determine_germline_contig_ploidy,
-            cpu = cpu_for_determine_germline_contig_ploidy,
-            disk_space_gb = disk_for_determine_germline_contig_ploidy,
             mapping_error_rate = ploidy_mapping_error_rate,
             sample_psi_scale = ploidy_sample_psi_scale,
-            preemptible_attempts = preemptible_attempts
+            runtime_attr_override = runtime_attr_ploidy
     }
 
     scatter (scatter_index in range(length(gcnv_model_tars))) {
@@ -123,8 +122,6 @@ workflow CNVGermlineCaseWorkflow {
                 gcnv_model_tar = gcnv_model_tars[scatter_index],
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
-                mem_gb = mem_gb_for_germline_cnv_caller,
-                cpu = cpu_for_germline_cnv_caller,
                 p_alt = gcnv_p_alt,
                 cnv_coherence_length = gcnv_cnv_coherence_length,
                 max_copy_number = gcnv_max_copy_number,
@@ -153,7 +150,7 @@ workflow CNVGermlineCaseWorkflow {
                 caller_internal_admixing_rate = gcnv_caller_internal_admixing_rate,
                 caller_external_admixing_rate = gcnv_caller_external_admixing_rate,
                 disable_annealing = gcnv_disable_annealing,
-                preemptible_attempts = preemptible_attempts
+                runtime_attr_override = runtime_attr_case
         }
     }
 
@@ -161,6 +158,8 @@ workflow CNVGermlineCaseWorkflow {
         input:
             calls_tars = GermlineCNVCallerCaseMode.gcnv_calls_tar,
             model_tars = gcnv_model_tars,
+            sv_base_mini_docker = sv_base_mini_docker,
+            runtime_attr_override = runtime_attr_bundle
     }
 
     scatter (sample_index in range(length(counts))) {
@@ -174,8 +173,7 @@ workflow CNVGermlineCaseWorkflow {
                 sample_index = sample_index,
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts,
-                mem_gb = postprocessing_mem_gb
+                runtime_attr_override = runtime_attr_postprocess
         }
     }
 
@@ -184,7 +182,7 @@ workflow CNVGermlineCaseWorkflow {
             contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
             samples = count_entity_ids,
             linux_docker = linux_docker,
-            preemptible_attempts = preemptible_attempts
+            runtime_attr_override = runtime_attr_explode
     }
 
     output {
@@ -204,23 +202,28 @@ task DetermineGermlineContigPloidyCaseMode {
       String? output_dir
       File? gatk4_jar_override
 
-      # Runtime parameters
-      String gatk_docker
-      Int? mem_gb
-      Int? disk_space_gb
-      Boolean use_ssd = false
-      Int? cpu
-      Int? preemptible_attempts
-
       # Model parameters
       Float? mapping_error_rate
       Float? sample_psi_scale
+
+      # Runtime parameters
+      String gatk_docker
+      RuntimeAttr? runtime_attr_override
     }
 
-    # We do not expose Hybrid ADVI parameters -- the default values are decent
+    RuntimeAttr default_attr = object {
+      cpu_cores: 4,
+      mem_gb: 8.5,
+      disk_gb: 10,
+      boot_disk_gb: 10,
+      preemptible_tries: 3,
+      max_retries: 1
+    }
+    RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
-    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
-    Int command_mem_mb = machine_mem_mb - 500
+    Float mem_gb = select_first([runtime_attr.mem_gb, default_attr.mem_gb])
+    Int command_mem_mb = ceil(mem_gb * 1000 - 500)
+    Int cpu = select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -229,8 +232,8 @@ task DetermineGermlineContigPloidyCaseMode {
         set -euo pipefail
         mkdir ~{output_dir_}
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
-        export MKL_NUM_THREADS=~{default=8 cpu}
-        export OMP_NUM_THREADS=~{default=8 cpu}
+        export MKL_NUM_THREADS=~{cpu}
+        export OMP_NUM_THREADS=~{cpu}
 
         mkdir input-contig-ploidy-model
         tar xzf ~{contig_ploidy_model_tar} -C input-contig-ploidy-model
@@ -251,14 +254,14 @@ task DetermineGermlineContigPloidyCaseMode {
 
         tar c -C ~{output_dir_}/case-calls . | gzip -1 > case-contig-ploidy-calls.tar.gz
     >>>
-
     runtime {
-        docker: "~{gatk_docker}"
-        memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
-        cpu: select_first([cpu, 8])
-        preemptible: select_first([preemptible_attempts, 5])
-        maxRetries: 1
+      cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+      memory: mem_gb + " GiB"
+      disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+      bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+      docker: gatk_docker
+      preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+      maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
     }
 
     output {
@@ -274,14 +277,6 @@ task GermlineCNVCallerCaseMode {
       File gcnv_model_tar
       String? output_dir
       File? gatk4_jar_override
-
-      # Runtime parameters
-      String gatk_docker
-      Int? mem_gb
-      Int? disk_space_gb
-      Boolean use_ssd = false
-      Int? cpu
-      Int? preemptible_attempts
 
       # Caller parameters
       Float? p_alt
@@ -316,10 +311,25 @@ task GermlineCNVCallerCaseMode {
       Float? caller_internal_admixing_rate
       Float? caller_external_admixing_rate
       Boolean? disable_annealing
+
+      # Runtime parameters
+      String gatk_docker
+      RuntimeAttr? runtime_attr_override
     }
 
-    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
-    Int command_mem_mb = machine_mem_mb - 500
+    RuntimeAttr default_attr = object {
+      cpu_cores: 4,
+      mem_gb: 10,
+      disk_gb: 10,
+      boot_disk_gb: 10,
+      preemptible_tries: 3,
+      max_retries: 1
+    }
+    RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
+
+    Float mem_gb = select_first([runtime_attr.mem_gb, default_attr.mem_gb])
+    Int command_mem_mb = ceil(mem_gb * 1000 - 500)
+    Int cpu = select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
 
     # If optional output_dir not specified, use "out"
     String output_dir_ = select_first([output_dir, "out"])
@@ -329,8 +339,8 @@ task GermlineCNVCallerCaseMode {
         set -euo pipefail
         mkdir ~{output_dir_}
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk4_jar_override}
-        export MKL_NUM_THREADS=~{default=8 cpu}
-        export OMP_NUM_THREADS=~{default=8 cpu}
+        export MKL_NUM_THREADS=~{cpu}
+        export OMP_NUM_THREADS=~{cpu}
 
         mkdir contig-ploidy-calls-dir
         tar xzf ~{contig_ploidy_calls_tar} -C contig-ploidy-calls-dir
@@ -383,14 +393,14 @@ task GermlineCNVCallerCaseMode {
         tar c -C ~{output_dir_}/case-tracking . | gzip -1 > case-gcnv-tracking-~{scatter_index}.tar.gz
         tar c -C ~{output_dir_}/case-calls  . | gzip -1 > case-gcnv-calls-files-~{scatter_index}.tar.gz
     >>>
-
     runtime {
-        docker: "~{gatk_docker}"
-        memory: machine_mem_mb + " MB"
-        disks: "local-disk " + select_first([disk_space_gb, 150]) + if use_ssd then " SSD" else " HDD"
-        cpu: select_first([cpu, 8])
-        preemptible: select_first([preemptible_attempts, 5])
-        maxRetries: 1
+      cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+      memory: mem_gb + " GiB"
+      disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+      bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+      docker: gatk_docker
+      preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+      maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
     }
 
     output {

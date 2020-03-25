@@ -20,13 +20,14 @@ workflow Module00aTest {
     input:
       name = test_name,
       samples = samples,
-      coverage_counts = select_first([Module00a.coverage_counts]),
-      BAF_out = select_first([Module00a.BAF_out]),
-      pesr_disc = select_first([Module00a.pesr_disc]),
-      pesr_split = select_first([Module00a.pesr_split]),
-      manta_vcf = select_first([Module00a.manta_vcf]),
-      melt_vcf = select_first([Module00a.melt_vcf]),
-      wham_vcf = select_first([Module00a.wham_vcf])
+      coverage_counts = Module00a.coverage_counts,
+      BAF_out = Module00a.BAF_out,
+      pesr_disc = Module00a.pesr_disc,
+      pesr_split = Module00a.pesr_split,
+      delly_vcf = Module00a.delly_vcf,
+      manta_vcf = Module00a.manta_vcf,
+      melt_vcf = Module00a.melt_vcf,
+      wham_vcf = Module00a.wham_vcf
   }
 
   call utils.PlotMetrics {

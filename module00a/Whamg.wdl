@@ -19,7 +19,7 @@ workflow Whamg {
     File chr_file
     Int? pf_reads_improper_pairs
     Float? pct_exc_total
-    String samtools_docker
+    String samtools_cloud_docker
     String wham_docker
     RuntimeAttr? runtime_attr_whitelist
     RuntimeAttr? runtime_attr_cram_to_bam
@@ -48,7 +48,7 @@ workflow Whamg {
         cram_file = bam_or_cram_file,
         reference_fasta = reference_fasta,
         reference_index = reference_index,
-        samtools_docker = samtools_docker,
+        samtools_cloud_docker = samtools_cloud_docker,
         runtime_attr_override = runtime_attr_cram_to_bam
     }
   }

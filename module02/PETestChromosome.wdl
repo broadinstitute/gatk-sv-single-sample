@@ -27,7 +27,7 @@ workflow PETestChromosome {
     File samples
     Boolean allosome
 
-    String sv_mini_docker
+    String sv_base_mini_docker
     String linux_docker
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_split_vcf
@@ -46,7 +46,7 @@ workflow PETestChromosome {
       chrom = chrom,
       split_size = split_size,
       suffix_len = select_first([suffix_len, 4]),
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_split_vcf
   }
 

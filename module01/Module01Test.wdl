@@ -18,9 +18,10 @@ workflow Module01Test {
       name = test_name,
       samples = samples,
       depth_vcf = Module01.depth_vcf,
-      manta_vcf = select_first([Module01.manta_vcf]),
-      wham_vcf = select_first([Module01.wham_vcf]),
-      melt_vcf = select_first([Module01.melt_vcf])
+      delly_vcf = Module01.delly_vcf,
+      manta_vcf = Module01.manta_vcf,
+      wham_vcf = Module01.wham_vcf,
+      melt_vcf = Module01.melt_vcf
   }
 
   call utils.PlotMetrics {

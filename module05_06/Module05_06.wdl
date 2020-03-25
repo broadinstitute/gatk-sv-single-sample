@@ -27,7 +27,7 @@ import "05_06_scatter_cpx_genotyping.wdl" as GenotypeComplexContig
 # based on snapshot 93
 import "05_06_clean_vcf.wdl" as CleanVcfContig
 # based on snapshot 75
-import "05_06_master_vcf_qc.wdl" as VcfQc
+import "master_vcf_qc.wdl" as VcfQc
 
 import "05_06_common_mini_tasks.wdl" as MiniTasks
 
@@ -68,6 +68,9 @@ workflow Module05_06 {
     Int max_shards_per_chrom_clean_vcf_step1
     Int min_records_per_shard_clean_vcf_step1
     Int samples_per_clean_vcf_step2_shard
+
+    String ref_build        # Needs to be GRCh37 or hg38
+
     File empty_file
     File? outlier_samples_list
     Int? random_seed
@@ -543,12 +546,12 @@ workflow Module05_06 {
       prefix="~{prefix}_pesr_rd_merged_VCF",
       sv_per_shard=10000,
       samples_per_shard=100,
+      ref_build=ref_build,
       sanders_2015_tarball=sanders_2015_tarball,
       collins_2017_tarball=collins_2017_tarball,
       werling_2018_tarball=werling_2018_tarball,
       contigs=contigs,
       random_seed=random_seed,
-      include_external_benchmarking=include_external_benchmarking,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       sv_base_mini_docker=sv_base_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
@@ -599,12 +602,12 @@ workflow Module05_06 {
       prefix="~{prefix}_resolved_VCF",
       sv_per_shard=10000,
       samples_per_shard=100,
+      ref_build=ref_build,
       sanders_2015_tarball=sanders_2015_tarball,
       collins_2017_tarball=collins_2017_tarball,
       werling_2018_tarball=werling_2018_tarball,
       contigs=contigs,
       random_seed=random_seed,
-      include_external_benchmarking=include_external_benchmarking,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       sv_base_mini_docker=sv_base_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
@@ -628,12 +631,12 @@ workflow Module05_06 {
       prefix="~{prefix}_cleaned_VCF",
       sv_per_shard=10000,
       samples_per_shard=100,
+      ref_build=ref_build,
       sanders_2015_tarball=sanders_2015_tarball,
       collins_2017_tarball=collins_2017_tarball,
       werling_2018_tarball=werling_2018_tarball,
       contigs=contigs,
       random_seed=random_seed,
-      include_external_benchmarking=include_external_benchmarking,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       sv_base_mini_docker=sv_base_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,

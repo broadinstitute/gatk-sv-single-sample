@@ -42,7 +42,7 @@ workflow Module00b {
     File wgd_scoring_mask
 
     # Runtime parameters
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_pipeline_docker
     String sv_pipeline_qc_docker
 
@@ -68,7 +68,7 @@ workflow Module00b {
       batch = batch,
       disk_overhead_gb = disk_overhead_bincov_gb,
       bincov_size_mb = bincov_size_mb,
-      sv_mini_docker = sv_mini_docker,
+      sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_bincov_attr
   }
 
@@ -77,7 +77,7 @@ workflow Module00b {
       input:
         bincov_matrix = MakeBincovMatrix.merged_bincov,
         batch = batch,
-        sv_mini_docker = sv_mini_docker,
+        sv_base_mini_docker = sv_base_mini_docker,
         sv_pipeline_qc_docker = sv_pipeline_qc_docker,
         runtime_attr_score = ploidy_score_runtime_attr,
         runtime_attr_build = ploidy_build_runtime_attr

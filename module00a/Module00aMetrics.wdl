@@ -10,10 +10,12 @@ workflow Module00aMetrics {
     Array[File]? BAF_out
     Array[File]? pesr_disc
     Array[File]? pesr_split
+    Array[File]? delly_vcf
     Array[File]? manta_vcf
     Array[File]? melt_vcf
     Array[File]? wham_vcf
 
+    Array[File]? baseline_delly_vcf
     Array[File]? baseline_manta_vcf
     Array[File]? baseline_melt_vcf
     Array[File]? baseline_wham_vcf
@@ -26,6 +28,38 @@ workflow Module00aMetrics {
   }
 
   scatter (i in range(length(samples))) {
+    if (defined(delly_vcf)) {
+      call tu.StandardizeVCF as Delly_Std {
+        input:
+          vcf = select_first([delly_vcf])[i],
+          sample_id = samples[i],
+          caller = "delly",
+          contig_index = contig_index,
+          min_size = min_size,
+          sv_pipeline_base_docker = sv_pipeline_base_docker
+      }
+      if (defined(baseline_delly_vcf)) {
+        call tu.StandardizeVCF as Delly_Std_Base {
+          input:
+            vcf = select_first([baseline_delly_vcf])[i],
+            sample_id = samples[i],
+            caller = "delly",
+            contig_index = contig_index,
+            min_size = min_size,
+            sv_pipeline_base_docker = sv_pipeline_base_docker
+        }
+      }
+      call tu.VCFMetrics as Delly_Metrics {
+        input:
+          vcf = Delly_Std.out,
+          baseline_vcf = Delly_Std_Base.out,
+          samples = [samples[i]],
+          prefix = "delly_" + samples[i],
+          types = "DEL,DUP,INS,INV,BND",
+          contig_list = contig_list,
+          sv_pipeline_base_docker = sv_pipeline_base_docker
+      }
+    }
     if (defined(manta_vcf)) {
       call tu.StandardizeVCF as Manta_Std {
         input:
@@ -154,7 +188,7 @@ workflow Module00aMetrics {
           sv_pipeline_base_docker = sv_pipeline_base_docker
       }
     }
-    Array[File] sample_metric_files = select_all([Manta_Metrics.out, Melt_Metrics.out, Wham_Metrics.out, BAFMetrics.out, SRMetrics.out, PEMetrics.out, CountsMetrics.out])
+    Array[File] sample_metric_files = select_all([Delly_Metrics.out, Manta_Metrics.out, Melt_Metrics.out, Wham_Metrics.out, BAFMetrics.out, SRMetrics.out, PEMetrics.out, CountsMetrics.out])
   }
 
   call tu.CatMetrics {

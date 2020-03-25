@@ -43,7 +43,7 @@ workflow Module02 {
 
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
-    String sv_mini_docker
+    String sv_base_mini_docker
     String sv_base_docker
     String sv_pipeline_base_docker
     String linux_docker
@@ -139,7 +139,7 @@ workflow Module02 {
             samples = GetSampleLists.samples_file,
             male_samples = GetSampleLists.male_samples,
             female_samples = GetSampleLists.female_samples,
-            sv_mini_docker = sv_mini_docker,
+            sv_base_mini_docker = sv_base_mini_docker,
             linux_docker = linux_docker,
             sv_pipeline_docker = sv_pipeline_docker,
             runtime_attr_srtest = runtime_attr_srtest,
@@ -164,7 +164,7 @@ workflow Module02 {
             samples = GetSampleLists.samples_file,
             male_samples = GetSampleLists.male_samples,
             female_samples = GetSampleLists.female_samples,
-            sv_mini_docker = sv_mini_docker,
+            sv_base_mini_docker = sv_base_mini_docker,
             linux_docker = linux_docker,
             sv_pipeline_docker = sv_pipeline_docker,
             runtime_attr_petest = runtime_attr_petest,
