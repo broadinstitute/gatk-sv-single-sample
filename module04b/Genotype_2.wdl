@@ -1,5 +1,5 @@
 version 1.0
-import "Tasks04.wdl" as task04
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module04b/Tasks04.wdl" as task04
 
 workflow Regenotype{
   input{

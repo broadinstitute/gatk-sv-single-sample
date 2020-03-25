@@ -10,11 +10,11 @@ version 1.0
 # Distributed under terms of the MIT license.
 
 
-import "sharded_qc_collection.wdl" as ShardedQcCollection
-import "collect_qc_per_sample.wdl" as CollectQcPerSample
-import "per_sample_external_benchmark.wdl" as PerSampleExternalBenchmark
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module05_06/sharded_qc_collection.wdl" as ShardedQcCollection
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module05_06/collect_qc_per_sample.wdl" as CollectQcPerSample
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module05_06/per_sample_external_benchmark.wdl" as PerSampleExternalBenchmark
 
-import "common_mini_tasks.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module05_06/common_mini_tasks.wdl" as MiniTasks
 
 # Master workflow to perform comprehensive quality control (QC) on
 # an SV VCF output by the Talkowski lab SV pipeline

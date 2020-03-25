@@ -23,7 +23,7 @@
 
 version 1.0
 
-import "GermlineCNVTasks.wdl" as CNVTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/gcnv/GermlineCNVTasks.wdl" as CNVTasks
 
 workflow CNVGermlineCaseWorkflow {
 

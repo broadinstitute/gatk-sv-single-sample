@@ -6,15 +6,15 @@
 
 version 1.0
 
-import "Structs.wdl"
-import "BAFFromGVCFs.wdl" as baf
-import "BAFFromShardedVCF.wdl" as sbaf
-import "CollectCoverage.wdl" as cov
-import "CramToBam.wdl" as ctb
-import "Delly.wdl" as delly
-import "Manta.wdl" as manta
-import "PESRCollection.wdl" as pesr
-import "Whamg.wdl" as wham
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00a/Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00a/BAFFromGVCFs.wdl" as baf
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00a/BAFFromShardedVCF.wdl" as sbaf
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00a/CollectCoverage.wdl" as cov
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00a/CramToBam.wdl" as ctb
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00a/Delly.wdl" as delly
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00a/Manta.wdl" as manta
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00a/PESRCollection.wdl" as pesr
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00a/Whamg.wdl" as wham
 
 # Runs selected tools on BAM/CRAM files
 

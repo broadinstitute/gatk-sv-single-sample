@@ -8,7 +8,7 @@
 
 version 1.0
 
-import "FilterOutliers.wdl" as filter_outliers
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module03/FilterOutliers.wdl" as filter_outliers
 
 workflow Module03 {
   input {

@@ -1,6 +1,6 @@
 version 1.0
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module00c/Structs.wdl"
 
 task AnnotateIntervals {
     input {

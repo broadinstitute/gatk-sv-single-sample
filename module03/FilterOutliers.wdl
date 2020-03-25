@@ -14,7 +14,7 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6/module03/Structs.wdl"
 
 # Workflow to identify & filter outliers from VCFs after module 03 (random forest)
 workflow FilterOutlierSamples {
