@@ -8,7 +8,7 @@
 
 version 1.0
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6.1/module02/Structs.wdl"
 
 workflow BAFTestChromosome {
   input {

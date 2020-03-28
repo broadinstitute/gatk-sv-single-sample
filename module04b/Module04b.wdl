@@ -1,8 +1,8 @@
 version 1.0
 
-import "Genotype_2.wdl" as g2
-import "CombineReassess.wdl" as creassess
-import "Genotype_3.wdl" as g3
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6.1/module04b/Genotype_2.wdl" as g2
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6.1/module04b/CombineReassess.wdl" as creassess
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6.1/module04b/Genotype_3.wdl" as g3
 
 workflow Module04b{
     input{

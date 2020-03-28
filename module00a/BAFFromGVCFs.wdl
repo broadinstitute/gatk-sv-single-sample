@@ -10,7 +10,7 @@
 
 version 1.0
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6.1/module00a/Structs.wdl"
 
 workflow BAFFromGVCFs {
   input {

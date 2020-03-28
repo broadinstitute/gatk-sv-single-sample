@@ -9,7 +9,7 @@
 
 version 1.0
 
-import "Tasks02.wdl" as tasks02
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.6.1/module02/Tasks02.wdl" as tasks02
 
 workflow PETestChromosome {
   input {
