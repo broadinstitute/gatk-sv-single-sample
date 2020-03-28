@@ -580,14 +580,6 @@ workflow GATKSVPipelineClinical {
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_filter_vcf_by_id
   }
-  call ClinicalFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterMelt {
-    input :
-      vcf_gz=select_first([Module01.melt_vcf]),
-      sample_id=sample_id,
-      evidence="RD,PE,SR",
-      sv_base_mini_docker=sv_base_mini_docker,
-      runtime_attr_override=runtime_attr_filter_vcf_by_id
-  }
   call ClinicalFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterDepth {
     input :
       vcf_gz=Module01.depth_vcf,
