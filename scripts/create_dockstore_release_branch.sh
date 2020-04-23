@@ -13,7 +13,15 @@ set -eu
 #
 # - in the github UI, create a release using the tag created by this script (this could eventually be automated by using a github API call)
 # - in the Dockstore UI, refresh the repository, switch the default version, and publish the tool
+#
+# Parameters:
+#
+# releaseName: name to give this release. a tag will be created with this name and a branch will be created with the name dockstore_release_${releaseName}
+# baseUrl: the base URL of the git repository's web-accessible location. Example: https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical
+#
+# Author: Chris Whelan (cwhelan at broadinstitute.org)
 releaseName=$1
+baseUrl=$2
 
 currentBranch=$(git rev-parse --abbrev-ref HEAD)
 if [ "${currentBranch}" != "master" ]
@@ -24,8 +32,6 @@ fi
 
 branch=dockstore_release_${releaseName}
 git checkout -b "${branch}"
-
-baseUrl="https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical"
 
 while read -r wdlPath
 do
