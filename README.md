@@ -1,12 +1,12 @@
-# gatk-sv-clinical  
+# gatk-sv-single-sample
 
-This repository contains WDL scripts to run the GATK-SV Clinical WGS Structural Variation detection pipeline.
+This repository contains WDL scripts to run the GATK-SV Single Sample WGS Structural Variation detection pipeline.
   
-Clinical WGS SV Pipeline Overview  
+Single Sample WGS SV Pipeline Overview  
 Modules, Steps, and Workflows    
 
 The workflow is divided into several modules shared with the joint calling version of this pipeline as well as several 
-custom steps specific to clinical processing of a single sample with a reference panel.  
+custom steps specific to single sample processing of a single sample with a reference panel.  
 
 - Module 00: Preprocessing  
 	- Step a: Run input SV algorithms and QC
