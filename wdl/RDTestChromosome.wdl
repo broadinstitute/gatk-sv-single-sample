@@ -27,6 +27,7 @@ workflow RDTestChromosome {
     File female_samples
     File samples
     Boolean allosome
+    Int tabix_retries
 
     String sv_pipeline_docker
     String sv_pipeline_rdtest_docker
@@ -63,6 +64,7 @@ workflow RDTestChromosome {
           whitelist = female_samples,
           prefix = basename(split),
           flags = flags,
+          tabix_retries = tabix_retries,
           sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
           runtime_attr_override = runtime_attr_rdtest
       }
@@ -77,6 +79,7 @@ workflow RDTestChromosome {
           whitelist = male_samples,
           prefix = basename(split),
           flags = flags,
+          tabix_retries = tabix_retries,
           sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
           runtime_attr_override = runtime_attr_rdtest
       }
@@ -103,6 +106,7 @@ workflow RDTestChromosome {
           ped_file = ped_file,
           prefix = basename(split),
           flags = flags,
+          tabix_retries = tabix_retries,
           sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
           runtime_attr_override = runtime_attr_rdtest
       }
@@ -134,6 +138,7 @@ task RDTest {
     File whitelist
     String prefix
     String flags
+    Int tabix_retries
     String sv_pipeline_rdtest_docker
     RuntimeAttr? runtime_attr_override
   }
@@ -146,7 +151,7 @@ task RDTest {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 3.75, 
+    mem_gb: 3.75,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,
@@ -164,13 +169,24 @@ task RDTest {
     end=$(cut -f3 ~{bed} | sort -k1,1n | tail -n1);
     chrom=$(cut -f1 ~{bed} | head -n1);
     set -o pipefail
-    GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` \
-      tabix -h ~{coveragefile} "$chrom":"$start"-"$end" \
-      | sed 's/Chr/chr/g' \
-      | sed 's/Start/start/g' \
-      | sed 's/End/end/' \
-      | bgzip -c > local_coverage.bed.gz
+
+    # Temporary workaround for corrupted tabix downloads
+    x=0
+    while [ $x -lt ~{tabix_retries} ]
+    do
+      # Download twice
+      GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` tabix -h ~{coveragefile} "$chrom":"$start"-"$end" | sed 's/Chr/chr/g' | sed 's/Start/start/g' | sed 's/End/end/' | bgzip -c > local_coverage_1.bed.gz
+      GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` tabix -h ~{coveragefile} "$chrom":"$start"-"$end" | sed 's/Chr/chr/g' | sed 's/Start/start/g' | sed 's/End/end/' | bgzip -c > local_coverage_2.bed.gz
+      # Done if the downloads were identical, otherwise retry
+      cmp --silent local_coverage_1.bed.gz local_coverage_2.bed.gz && break
+      x=$(( $x + 1))
+    done
+    echo "RD-tabix retry:" $x
+    cmp --silent local_coverage_1.bed.gz local_coverage_2.bed.gz || exit 1
+
+    mv local_coverage_1.bed.gz local_coverage.bed.gz
     tabix -p bed local_coverage.bed.gz;
+
     Rscript /opt/RdTest/RdTest.R \
       -b ~{bed} \
       -n ~{prefix} \
@@ -207,7 +223,7 @@ task SplitRDVcf {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 3.75, 
+    mem_gb: 3.75,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,

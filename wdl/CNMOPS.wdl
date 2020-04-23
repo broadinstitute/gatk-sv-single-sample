@@ -28,8 +28,8 @@ workflow CNMOPS {
     String prefix
     Int? min_size
     Boolean? stitch_and_clean_large_events = false
-    Float? mem_gb_override_sample10
-    Float? mem_gb_override_sample3
+    Float mem_gb_override_sample10 = 7.5
+    Float mem_gb_override_sample3 = 16
     String linux_docker
     String sv_pipeline_docker
     String cnmops_docker
@@ -38,9 +38,6 @@ workflow CNMOPS {
     RuntimeAttr? runtime_attr_ped
     RuntimeAttr? runtime_attr_clean
   }
-
-  Float mem_gb_sample10 = select_first([mem_gb_override_sample10, 40])
-  Float mem_gb_sample3 = select_first([mem_gb_override_sample3, 80])
   Array[Array[String]] Allos = read_tsv(allo_file)
   Array[Array[String]] Chroms = read_tsv(chrom_file)
 
@@ -54,7 +51,7 @@ workflow CNMOPS {
         r = r2,
         bincov_matrix = bincov_matrix,
         bincov_matrix_index = bincov_matrix_index,
-        mem_gb_override = mem_gb_sample10,
+        mem_gb_override = mem_gb_override_sample10,
         cnmops_docker = cnmops_docker,
         runtime_attr_override = runtime_attr_sample10
     }
@@ -68,7 +65,7 @@ workflow CNMOPS {
         r = r1,
         bincov_matrix = bincov_matrix,
         bincov_matrix_index = bincov_matrix_index,
-        mem_gb_override = mem_gb_sample3,
+        mem_gb_override = mem_gb_override_sample3,
         cnmops_docker = cnmops_docker,
         runtime_attr_override = runtime_attr_sample3
     }
@@ -84,7 +81,7 @@ workflow CNMOPS {
         r = r2,
         bincov_matrix = bincov_matrix,
         bincov_matrix_index = bincov_matrix_index,
-        mem_gb_override = mem_gb_sample10,
+        mem_gb_override = mem_gb_override_sample10,
         cnmops_docker = cnmops_docker,
         runtime_attr_override = runtime_attr_sample10
     }
@@ -98,7 +95,7 @@ workflow CNMOPS {
         r = r1,
         bincov_matrix = bincov_matrix,
         bincov_matrix_index = bincov_matrix_index,
-        mem_gb_override = mem_gb_sample3,
+        mem_gb_override = mem_gb_override_sample3,
         cnmops_docker = cnmops_docker,
         runtime_attr_override = runtime_attr_sample3
     }
@@ -113,7 +110,7 @@ workflow CNMOPS {
       r = r2,
       bincov_matrix = bincov_matrix,
       bincov_matrix_index = bincov_matrix_index,
-      mem_gb_override = mem_gb_sample10,
+      mem_gb_override = mem_gb_override_sample10,
       cnmops_docker = cnmops_docker,
       runtime_attr_override = runtime_attr_sample10
   }
@@ -127,7 +124,7 @@ workflow CNMOPS {
       r = r1,
       bincov_matrix = bincov_matrix,
       bincov_matrix_index = bincov_matrix_index,
-      mem_gb_override = mem_gb_sample3,
+      mem_gb_override = mem_gb_override_sample3,
       cnmops_docker = cnmops_docker,
       runtime_attr_override = runtime_attr_sample3
   }
@@ -343,7 +340,19 @@ task CNSampleNormal {
       awk -f <(echo "$col_a") bincov_~{chr}.bed | tr ' ' '\t' > bincov_~{chr}_~{mode}.bed
     fi
 
-    bash /opt/WGD/bin/cnMOPS_workflow.sh -S ~{black} -x ~{black} -r ~{r} -o . -M bincov_~{chr}_~{mode}.bed || touch calls/cnMOPS.cnMOPS.gff
+    EMPTY_OUTPUT_ERROR="No CNV regions in result object. Rerun cn.mops with different parameters!"
+    set +e
+    bash /opt/WGD/bin/cnMOPS_workflow.sh -S ~{black} -x ~{black} -r ~{r} -o . -M bincov_~{chr}_~{mode}.bed &> cnmops.out
+    RC=$?
+    set -e
+    if [ ! $RC -eq 0 ]; then
+      if grep -q "$EMPTY_OUTPUT_ERROR" "cnmops.out"; then
+        touch calls/cnMOPS.cnMOPS.gff
+      else
+        echo "cnMOPS_workflow.sh returned a non-zero code that was not due to an empty call file."
+        exit $RC
+      fi
+    fi
     
   >>>
   runtime {

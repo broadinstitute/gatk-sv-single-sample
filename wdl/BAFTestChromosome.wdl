@@ -20,6 +20,7 @@ workflow BAFTestChromosome {
     String algorithm
     Int split_size
     Int? suffix_len
+    Int tabix_retries
 
     String linux_docker
     String sv_pipeline_docker
@@ -51,6 +52,7 @@ workflow BAFTestChromosome {
         samples = samples,
         prefix = basename(split),
         batch = batch,
+        tabix_retries = tabix_retries,
         sv_pipeline_docker = sv_pipeline_docker,
         runtime_attr_override = runtime_attr_baftest
     }
@@ -77,6 +79,7 @@ task BAFTest {
     Array[String] samples
     String prefix
     String batch
+    Int tabix_retries
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
@@ -110,8 +113,22 @@ task BAFTest {
     end=$(cut -f3 ~{bed} | sort -k1,1n | tail -n1)
     chrom=$(cut -f1 ~{bed} | head -n1)
     set -o pipefail
-    GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` \
-      tabix ~{baf_metrics} "$chrom":"$start"-"$end" | bgzip -c > local_baf.bed.gz
+
+    # Temporary workaround for corrupted tabix downloads
+    x=0
+    while [ $x -lt ~{tabix_retries} ]
+    do
+      # Download twice
+      GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` tabix ~{baf_metrics} "$chrom":"$start"-"$end" | bgzip -c > local_baf_1.bed.gz
+      GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` tabix ~{baf_metrics} "$chrom":"$start"-"$end" | bgzip -c > local_baf_2.bed.gz
+      # Done if the downloads were identical, otherwise retry
+      cmp --silent local_baf_1.bed.gz local_baf_2.bed.gz && break
+      x=$(( $x + 1))
+    done
+    echo "BAF-tabix retry:" $x
+    cmp --silent local_baf_1.bed.gz local_baf_2.bed.gz || exit 1
+
+    mv local_baf_1.bed.gz local_baf.bed.gz
     tabix -b2 local_baf.bed.gz
     svtk baf-test ~{bed} local_baf.bed.gz --batch batch.key > ~{prefix}.metrics
   
@@ -138,7 +155,7 @@ task MergeBAFSplits {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 3.75, 
+    mem_gb: 3.75,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,
@@ -188,7 +205,7 @@ task SplitBafVcf {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 3.75, 
+    mem_gb: 3.75,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,

@@ -12,6 +12,7 @@ import "PETest.wdl" as pet
 import "RDTest.wdl" as rdt
 import "SRTest.wdl" as srt
 import "BAFTest.wdl" as baft
+import "Tasks02.wdl" as tasks02
 
 workflow Module02 {
   input {
@@ -34,6 +35,8 @@ workflow Module02 {
     Int RD_split_size
     Int PE_split_size
     Int SR_split_size
+    Int common_cnv_size_cutoff
+    Int tabix_retries = 5
 
     File rmsk
     File segdups
@@ -97,6 +100,7 @@ workflow Module02 {
             samples = GetSampleLists.samples_file,
             male_samples = GetSampleLists.male_samples,
             female_samples = GetSampleLists.female_samples,
+            tabix_retries = tabix_retries,
             sv_pipeline_docker = sv_pipeline_docker,
             sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
             linux_docker = linux_docker,
@@ -115,6 +119,7 @@ workflow Module02 {
             algorithm = algorithm,
             batch = batch,
             samples = samples,
+            tabix_retries = tabix_retries,
             linux_docker = linux_docker,
             sv_pipeline_docker = sv_pipeline_docker,
             runtime_attr_baftest = runtime_attr_baftest,
@@ -139,6 +144,9 @@ workflow Module02 {
             samples = GetSampleLists.samples_file,
             male_samples = GetSampleLists.male_samples,
             female_samples = GetSampleLists.female_samples,
+            run_common = true,
+            common_cnv_size_cutoff = common_cnv_size_cutoff,
+            tabix_retries = tabix_retries,
             sv_base_mini_docker = sv_base_mini_docker,
             linux_docker = linux_docker,
             sv_pipeline_docker = sv_pipeline_docker,
@@ -164,6 +172,8 @@ workflow Module02 {
             samples = GetSampleLists.samples_file,
             male_samples = GetSampleLists.male_samples,
             female_samples = GetSampleLists.female_samples,
+            common_cnv_size_cutoff = common_cnv_size_cutoff,
+            tabix_retries = tabix_retries,
             sv_base_mini_docker = sv_base_mini_docker,
             linux_docker = linux_docker,
             sv_pipeline_docker = sv_pipeline_docker,
@@ -186,6 +196,25 @@ workflow Module02 {
           sv_pipeline_docker = sv_pipeline_docker,
           runtime_attr_override = runtime_attr_aggregate_tests
       }
+
+      call tasks02.SplitCommonVCF as SplitCommonVCF {
+        input:
+          vcf = vcf,
+          cnv_size_cutoff = common_cnv_size_cutoff,
+          sv_pipeline_docker = sv_pipeline_docker,
+          runtime_attr_override = runtime_attr_split_vcf
+      }
+
+      call AggregateTests as AggregateTestsCommon {
+        input:
+          vcf = SplitCommonVCF.common_vcf,
+          petest = PETest.petest_common,
+          srtest = SRTest.srtest_common,
+          segdups = segdups,
+          rmsk = rmsk,
+          sv_pipeline_docker = sv_pipeline_docker,
+          runtime_attr_override = runtime_attr_aggregate_tests
+      }
     }
   }
 
@@ -193,12 +222,23 @@ workflow Module02 {
     input:
       batch = batch,
       input_metrics = select_all(AggregateTests.metrics),
+      common = false,
+      sv_pipeline_base_docker = sv_pipeline_base_docker,
+      runtime_attr_override = runtime_attr_aggregate_callers
+  }
+
+  call AggregateCallers as AggregateCallersCommon {
+    input:
+      batch = batch,
+      input_metrics = select_all(AggregateTestsCommon.metrics),
+      common = true,
       sv_pipeline_base_docker = sv_pipeline_base_docker,
       runtime_attr_override = runtime_attr_aggregate_callers
   }
 
   output {
     File metrics = AggregateCallers.metrics
+    File metrics_common = AggregateCallersCommon.metrics
   }
 }
 
@@ -274,7 +314,7 @@ task AggregateTests {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 7.5, 
+    mem_gb: 7.5,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,
@@ -313,6 +353,7 @@ task AggregateCallers {
   input {
     String batch
     Array[File] input_metrics
+    Boolean common
     String sv_pipeline_base_docker
     RuntimeAttr? runtime_attr_override
   }
@@ -327,8 +368,10 @@ task AggregateCallers {
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
+  String output_file = if common then "${batch}.common.metrics" else "${batch}.metrics"
+
   output {
-    File metrics = "${batch}.metrics"
+    File metrics = "~{output_file}"
   }
   command <<<
 
@@ -340,7 +383,7 @@ task AggregateCallers {
     for df in metrics:
       dfs.append(pd.read_table(df))
     df = pd.concat(dfs)
-    df.to_csv("~{batch}.metrics", index=False, sep='\t')
+    df.to_csv("~{output_file}", index=False, sep='\t')
     CODE
         
   >>>
@@ -353,5 +396,5 @@ task AggregateCallers {
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
-
 }
+

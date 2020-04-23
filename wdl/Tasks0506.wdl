@@ -310,14 +310,12 @@ task FilesToTarredFolder {
 #Create input file for per-batch genotyping of predicted CPX CNV intervals
 task PasteFiles {
   input {
+    Array[String] input_strings
     Array[File] input_files
     String outfile_name
-    String? filter_command
     String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
-
-  Boolean do_filter = defined(filter_command) && filter_command != ""
 
   # when filtering/sorting/etc, memory usage will likely go up (much of the data will have to
   # be held in memory or disk while working, potentially in a form that takes up more space)
@@ -325,8 +323,8 @@ task PasteFiles {
   Float base_disk_gb = 5.0
   Float base_mem_gb = 2.0
   RuntimeAttr runtime_default = object {
-    mem_gb: base_mem_gb + (if do_filter then input_size else 0.0),
-    disk_gb: ceil(base_disk_gb + input_size * (if do_filter then 3.0 else 2.0)),
+    mem_gb: base_mem_gb,
+    disk_gb: ceil(base_disk_gb + input_size * 2.0),
     cpu_cores: 1,
     preemptible_tries: 3,
     max_retries: 1,
@@ -347,7 +345,6 @@ task PasteFiles {
     set -eu -o pipefail
 
     paste ~{sep=' ' input_files} \
-      ~{if do_filter then "| " + select_first([filter_command]) else ""} \
       > ~{outfile_name}
   >>>
 
@@ -500,12 +497,13 @@ task SplitUncompressed {
     String? shard_prefix
     Boolean? shuffle_file
     Int? random_seed
-    String sv_base_mini_docker
+    String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
 
   String split_prefix=select_first([shard_prefix, "shard_"])
   Boolean do_shuffle=select_first([shuffle_file, false])
+  Int random_seed_ = if defined(random_seed) then select_first([random_seed]) else 0
 
   # when filtering/sorting/etc, memory usage will likely go up (much of the data will have to
   # be held in memory or disk while working, potentially in a form that takes up more space)
@@ -527,7 +525,7 @@ task SplitUncompressed {
     cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
     preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
     maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
-    docker: sv_base_mini_docker
+    docker: sv_pipeline_docker
     bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
   }
 
@@ -540,10 +538,7 @@ task SplitUncompressed {
     # note for if ~do_shuffle is true: shuf is faster than sort --random-sort, but
     # sort --random-sort will predictably fit in memory, making it a better choice for VMs
     ~{if do_shuffle then
-        if defined(random_seed) then
-            "sort --random-sort --random-source=<(get_seeded_random ~{random_seed}) -o ~{whole_file} ~{whole_file}"
-          else
-            "sort --random-sort --random-source=/dev/urandom -o ~{whole_file} ~{whole_file}"
+        "sort --random-sort --random-source=<(get_seeded_random ~{random_seed_}) -o ~{whole_file} ~{whole_file}"
       else
         ""
       }

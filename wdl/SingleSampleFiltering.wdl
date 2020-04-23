@@ -274,7 +274,7 @@ task FilterLargePESRCallsWithoutRawDepthSupport {
 
 task FilterVcfWithReferencePanelCalls {
   input {
-    File clinical_vcf
+    File single_sample_vcf
     File cohort_vcf
     String case_sample_id
     Float? max_ref_panel_carrier_freq
@@ -295,7 +295,7 @@ task FilterVcfWithReferencePanelCalls {
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
-  String filebase = basename(clinical_vcf, ".vcf.gz")
+  String filebase = basename(single_sample_vcf, ".vcf.gz")
   String outfile = "~{filebase}.filter_by_ref_panel.vcf.gz"
 
   output {
@@ -308,8 +308,8 @@ task FilterVcfWithReferencePanelCalls {
   $BCFTOOLS query -l ~{cohort_vcf} > ref_samples.list
   maxRefSamples=$(wc -l ref_samples.list | awk '{print sprintf("%.0f", $1 * ~{default="0.01" max_ref_panel_carrier_freq})}')
 
-  /opt/sv-pipeline/scripts/clinical/apply_ref_panel_genotypes_filter.py \
-    ~{clinical_vcf} \
+  /opt/sv-pipeline/scripts/single_sample/apply_ref_panel_genotypes_filter.py \
+    ~{single_sample_vcf} \
     ~{cohort_vcf} \
     ~{case_sample_id} ~{default="0.5" required_cnv_coverage_pct} ${maxRefSamples} \
     del_dup_cpx_inv_filtered.vcf.gz
@@ -325,7 +325,7 @@ task FilterVcfWithReferencePanelCalls {
       -i 'FILTER ~ "MULTIALLELIC"' \
       -S ref_samples.list \
       -f '%CHROM\t%POS\t%END\t%ID\t%SVLEN\n' \
-      ~{clinical_vcf} | \
+      ~{single_sample_vcf} | \
       awk '{OFS="\t"; $3 = $2 + $5; print}' \
       > case.ref_panel_variant.multiallelic.bed
 
@@ -342,7 +342,7 @@ task FilterVcfWithReferencePanelCalls {
   $BCFTOOLS query -i "SVTYPE == 'INS' && AC >= ${maxRefSamples}" \
       -S ref_samples.list \
       -f '%CHROM\t%POS\t%END\t%ID\t%SVLEN\n' \
-      ~{clinical_vcf} | \
+      ~{single_sample_vcf} | \
       awk '{OFS="\t"; $3 = $2 + $5; print}'  > case.ref_panel_variant.ins.bed
 
   intersectBed \
@@ -358,7 +358,7 @@ task FilterVcfWithReferencePanelCalls {
   $BCFTOOLS query -i "SVTYPE='BND' && AC >= ${maxRefSamples}" \
       -S ref_samples.list \
       -f '%CHROM\t%POS\t%INFO/CHR2\t%INFO/END\t%ID\t\n' \
-      ~{clinical_vcf} | \
+      ~{single_sample_vcf} | \
       awk '{OFS="\t"; print $1,$2-50,$2+50,$3,$4-50,$4+50,$5}' > case.gts.bnd.bedpe
 
   pairToPair -a case.gts.bnd.bedpe \
@@ -388,8 +388,8 @@ task FilterVcfWithReferencePanelCalls {
 
 task ResetFilter {
   input {
-    File clinical_vcf
-    File clinical_vcf_idx
+    File single_sample_vcf
+    File single_sample_vcf_idx
     String filter_to_reset
     String info_header_line
 
@@ -407,7 +407,7 @@ task ResetFilter {
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
-  String filebase = basename(clinical_vcf, ".vcf.gz")
+  String filebase = basename(single_sample_vcf, ".vcf.gz")
   String outfile = "~{filebase}.reset_~{filter_to_reset}_filter.vcf.gz"
 
   output {
@@ -420,7 +420,7 @@ task ResetFilter {
 
   echo '~{info_header_line}' > header.txt
 
-  bcftools filter -i 'FILTER ~ "~{filter_to_reset}"' ~{clinical_vcf} | bgzip -c > hsrb.vcf.gz
+  bcftools filter -i 'FILTER ~ "~{filter_to_reset}"' ~{single_sample_vcf} | bgzip -c > hsrb.vcf.gz
   tabix hsrb.vcf.gz
 
   bcftools annotate \
@@ -429,7 +429,7 @@ task ResetFilter {
     -m ~{filter_to_reset} \
     -h header.txt \
     -x FILTER/~{filter_to_reset} \
-    ~{clinical_vcf} | bgzip -c > ~{outfile}
+    ~{single_sample_vcf} | bgzip -c > ~{outfile}
 
   tabix ~{outfile}
   >>>
@@ -446,8 +446,8 @@ task ResetFilter {
 
 task FinalVCFCleanup {
   input {
-    File clinical_vcf
-    File clinical_vcf_idx
+    File single_sample_vcf
+    File single_sample_vcf_idx
     File ref_fasta
     File ref_fasta_idx
 
@@ -465,7 +465,7 @@ task FinalVCFCleanup {
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
-  String filebase = basename(clinical_vcf, ".vcf.gz")
+  String filebase = basename(single_sample_vcf, ".vcf.gz")
   String outfile = "~{filebase}.final_cleanup.vcf.gz"
 
   output {
@@ -478,14 +478,14 @@ task FinalVCFCleanup {
 
      # clean up bad END tags
      bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%INFO/END\n' \
-        ~{clinical_vcf} | awk '$5 < $2 {OFS="\t"; $5 = $2 + 1; print}' | bgzip -c > bad_ends.txt.gz
+        ~{single_sample_vcf} | awk '$5 < $2 {OFS="\t"; $5 = $2 + 1; print}' | bgzip -c > bad_ends.txt.gz
      tabix -s1 -b2 -e2 bad_ends.txt.gz
      bcftools annotate \
         -a bad_ends.txt.gz \
         -c CHROM,POS,REF,ALT,END \
-        ~{clinical_vcf} | bgzip -c > fix_bad_ends.vcf.gz
+        ~{single_sample_vcf} | bgzip -c > fix_bad_ends.vcf.gz
 
-     /opt/sv-pipeline/scripts/clinical/update_variant_representations.py fix_bad_ends.vcf.gz ~{ref_fasta} \
+     /opt/sv-pipeline/scripts/single_sample/update_variant_representations.py fix_bad_ends.vcf.gz ~{ref_fasta} \
         | vcf-sort -c \
         | bgzip -c > ~{outfile}
 
@@ -551,7 +551,7 @@ task ConvertCNVsWithoutDepthSupportToBNDs {
   input {
     File genotyped_pesr_vcf
     File allosome_file
-    String clinical_sample
+    String case_sample
     File merged_famfile
     Int? min_length
     String sv_pipeline_docker
@@ -579,11 +579,11 @@ task ConvertCNVsWithoutDepthSupportToBNDs {
 
     set -euo pipefail
 
-    /opt/sv-pipeline/scripts/clinical/convert_cnvs_without_depth_support_to_bnds.py \
+    /opt/sv-pipeline/scripts/single_sample/convert_cnvs_without_depth_support_to_bnds.py \
         ~{genotyped_pesr_vcf} \
         ~{allosome_file} \
         ~{merged_famfile} \
-        ~{clinical_sample} \
+        ~{case_sample} \
         ~{default="1000" min_length} \
         -o ~{outfile}
 

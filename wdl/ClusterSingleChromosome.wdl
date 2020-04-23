@@ -8,14 +8,13 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "05_06_common_mini_tasks.wdl" as MiniTasks
-import "05_06_sharded_cluster.wdl" as ShardedCluster
+import "Tasks0506.wdl" as MiniTasks
+import "ShardedCluster.wdl" as ShardedCluster
 
 # Workflow to perform sharding & clustering of a vcf for a single chromosome
 workflow ClusterSingleChrom {
   input {
     File vcf
-    File vcf_idx
     String contig
     String prefix
     Int max_shards
@@ -24,7 +23,6 @@ workflow ClusterSingleChrom {
     Float frac
     Float sample_overlap
     File? blacklist
-    File? blacklist_idx
     Int sv_size
     Array[String] sv_types
 
@@ -63,7 +61,6 @@ workflow ClusterSingleChrom {
     call ShardedCluster.ShardedCluster as ShardedCluster {
       input:
         vcf=SubsetSvType.filtered_vcf,
-        vcf_idx=SubsetSvType.filtered_vcf_idx,
         dist=dist,
         frac=frac,
         max_shards=max_shards,
@@ -73,7 +70,6 @@ workflow ClusterSingleChrom {
         sv_type=sv_type,
         sample_overlap=sample_overlap,
         blacklist=blacklist,
-        blacklist_idx=blacklist_idx,
         sv_size=sv_size,
         sv_types=sv_types,
         sv_pipeline_docker=sv_pipeline_docker,

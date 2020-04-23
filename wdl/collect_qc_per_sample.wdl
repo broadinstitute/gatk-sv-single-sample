@@ -6,7 +6,7 @@ version 1.0
 # Contact: Ryan Collins <rlcollins@g.harvard.edu>
 # Distributed under terms of the MIT license.
 
-import "common_mini_tasks.wdl" as MiniTasks
+import "Tasks0506.wdl" as MiniTasks
 
 # Workflow to gather lists of variant IDs per sample from an SV VCF
 workflow CollectQcPerSample {
@@ -33,7 +33,7 @@ workflow CollectQcPerSample {
       whole_file=samples_list,
       lines_per_shard=samples_per_shard,
       shard_prefix=prefix + ".list_shard.",
-      sv_base_mini_docker=sv_base_mini_docker,
+      sv_pipeline_docker=sv_pipeline_docker,
       runtime_attr_override=runtime_override_split_samples_list
   }
 

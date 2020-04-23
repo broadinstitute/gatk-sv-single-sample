@@ -25,6 +25,8 @@ workflow PETest {
     File male_samples
     File female_samples
     File samples
+    Int common_cnv_size_cutoff
+    Int tabix_retries
 
     String sv_base_mini_docker
     String linux_docker
@@ -54,6 +56,8 @@ workflow PETest {
         male_samples = male_samples,
         female_samples = female_samples,
         allosome = false,
+        common_cnv_size_cutoff = common_cnv_size_cutoff,
+        tabix_retries = tabix_retries,
         sv_base_mini_docker = sv_base_mini_docker,
         linux_docker = linux_docker,
         sv_pipeline_docker = sv_pipeline_docker,
@@ -62,6 +66,7 @@ workflow PETest {
         runtime_attr_merge_allo = runtime_attr_merge_allo,
         runtime_attr_merge_stats = runtime_attr_merge_stats
     }
+
   }
 
   scatter (allosome in allosomes) {
@@ -79,6 +84,8 @@ workflow PETest {
         male_samples = male_samples,
         female_samples = female_samples,
         allosome = true,
+        common_cnv_size_cutoff = common_cnv_size_cutoff,
+        tabix_retries = tabix_retries,
         sv_base_mini_docker = sv_base_mini_docker,
         linux_docker = linux_docker,
         sv_pipeline_docker = sv_pipeline_docker,
@@ -97,7 +104,16 @@ workflow PETest {
       runtime_attr_override = runtime_attr_merge_stats
   }
 
+  call tasks02.MergeStats as MergeStatsCommon {
+    input:
+      stats = select_all(PETestAutosome.stats_common),
+      prefix = "${batch}.${algorithm}.common",
+      linux_docker = linux_docker,
+      runtime_attr_override = runtime_attr_merge_stats
+  }
+
   output {
     File petest = MergeStats.merged_stats
+    File petest_common = MergeStatsCommon.merged_stats
   }
 }

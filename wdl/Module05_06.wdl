@@ -19,55 +19,48 @@ version 1.0
 
 #Imports:
 # based on snapshot 11
-import "05_06_vcf_cluster_single_chrom.wdl" as VcfClusterContig
+import "VcfClusterSingleChromsome.wdl" as VcfClusterContig
 # based on snapshot 28
-import "05_06_resolve_complex_sv.wdl" as ResolveComplexContig
+import "ResolveCpxSv.wdl" as ResolveComplexContig
 # based on snapshot 12
-import "05_06_scatter_cpx_genotyping.wdl" as GenotypeComplexContig
+import "ScatterCpxGenotyping.wdl" as GenotypeComplexContig
 # based on snapshot 93
-import "05_06_clean_vcf.wdl" as CleanVcfContig
+import "CleanVcf.wdl" as CleanVcfContig
 # based on snapshot 75
 import "master_vcf_qc.wdl" as VcfQc
 
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "Tasks0506.wdl" as MiniTasks
 
 workflow Module05_06 {
   input {
-    File bin_exclude
-    File raw_sr_bothside_pass
-    File raw_sr_background_fail
-    Float min_sr_background_fail_batches
-    File fam_file_list
+    String cohort_name
+    Array[String] batches
+    Array[File] samplelist_files
+    Array[File] ped_files
 
-    File pesr_vcf_list
-    File pesr_vcf_idx_list
-    File depth_vcf_list
-    File depth_vcf_idx_list
-    Array[String] samples
+    Array[File] pesr_vcfs
+    Array[File] depth_vcfs
+    Array[File] disc_files
+    Array[File] bincov_files
+
+    Array[File] raw_sr_bothside_pass_files
+    Array[File] raw_sr_background_fail_files
+    Array[File] depth_gt_rd_sep_files
+    Array[File] median_coverage_files
+    Array[File] rf_cutoff_files
+
+    File bin_exclude
     File contig_list
     Int max_shards_per_chrom
     Int min_variants_per_shard
     File cytobands
-    File cytobands_idx
-    File discfile_list
-    File discfile_idx_list
-    File bincov_list
-    File bincov_idx_list
     File mei_bed
     File pe_blacklist
-    File pe_blacklist_idx
     File depth_blacklist
-    File depth_blacklist_idx
-    String prefix
-    File trios_fam_file
-    File rf_cutoffs
-    File batches_list
-    File depth_gt_rd_sep_list
-    File medianfile_list
-    File sampleslist_list
     Int max_shards_per_chrom_clean_vcf_step1
     Int min_records_per_shard_clean_vcf_step1
     Int samples_per_clean_vcf_step2_shard
+    Float min_sr_background_fail_batches
 
     String ref_build        # Needs to be GRCh37 or hg38
 
@@ -181,10 +174,10 @@ workflow Module05_06 {
   }
 
   # Preprocess some inputs
-  Int num_pass_lines=length(read_lines(raw_sr_bothside_pass))
+  Int num_pass_lines=length(raw_sr_bothside_pass_files)
   call MiniTasks.CatUncompressedFiles as CleanBothsidePass {
     input:
-      shards=read_lines(raw_sr_bothside_pass),
+      shards=raw_sr_bothside_pass_files,
       filter_command="sort | uniq -c | awk -v OFS='\\t' '{print $1/~{num_pass_lines}, $2}'",
       outfile_name="cohort_sr_genotyping_bothside_pass_list.txt",
       sv_base_mini_docker=sv_base_mini_docker,
@@ -192,10 +185,10 @@ workflow Module05_06 {
   }
   File sr_bothend_pass = CleanBothsidePass.outfile
 
-  Float min_background_fail_first_col = min_sr_background_fail_batches * length(read_lines(raw_sr_background_fail))
+  Float min_background_fail_first_col = min_sr_background_fail_batches * length(raw_sr_background_fail_files)
   call MiniTasks.CatUncompressedFiles as CleanBackgroundFail {
     input:
-      shards=read_lines(raw_sr_background_fail),
+      shards=raw_sr_background_fail_files,
       filter_command="sort | uniq -c | awk -v OFS='\\t' '{if($1 >= ~{min_background_fail_first_col}) print $2}'",
       outfile_name="cohort_sr_genotyping_background_fail_list.txt",
       sv_base_mini_docker=sv_base_mini_docker,
@@ -205,31 +198,12 @@ workflow Module05_06 {
 
   call MiniTasks.CatUncompressedFiles as MergeFamFileList {
     input:
-      shards=read_lines(fam_file_list),
+      shards=ped_files,
       outfile_name="merged_famfile.fam",
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_override_merge_fam_file_list
   }
-  File fam_file = MergeFamFileList.outfile
-
-  #Prep input file for depth genotyping of complex intervals
-  call MiniTasks.PasteFiles as MakeCpxCnvInputFile {
-    input:
-      input_files=[batches_list, bincov_list, bincov_idx_list,
-                   depth_gt_rd_sep_list, sampleslist_list, fam_file_list,
-                   medianfile_list],
-      outfile_name=prefix + ".cpx_cnv_genotyping_input.txt",
-      sv_base_mini_docker=sv_base_mini_docker,
-      runtime_attr_override=runtime_override_make_cpx_cnv_input_file
-  }
-
-  # get size of discfiles
-  call GetDiscfileSize {
-    input:
-      discfile_list=discfile_list,
-      sv_pipeline_docker=sv_pipeline_docker,
-      runtime_attr_override=runtime_overide_get_discfile_size
-  }
+  File merged_ped_file = MergeFamFileList.outfile
 
   #Scatter per chromosome
   Array[String] contigs = transpose(read_tsv(contig_list))[0]
@@ -240,14 +214,13 @@ workflow Module05_06 {
     #present on chromosome of interest
     call VcfClusterContig.VcfClusterSingleChrom as ClusterPesr {
       input:
-        vcf_list=pesr_vcf_list,
-        batches_list=batches_list,
+        vcfs=pesr_vcfs,
+        batches=batches,
         prefix="AllBatches_pesr",
         dist=300,
         frac=0.1,
         sample_overlap=0.5,
         blacklist=pe_blacklist,
-        blacklist_idx=pe_blacklist_idx,
         sv_size=50,
         sv_types=["DEL","DUP","INV","BND","INS"],
         contig=contig,
@@ -273,14 +246,13 @@ workflow Module05_06 {
     #Subset RD VCFs to single chromosome & cluster
     call VcfClusterContig.VcfClusterSingleChrom as ClusterDepth {
       input:
-        vcf_list=depth_vcf_list,
-        batches_list=batches_list,
+        vcfs=depth_vcfs,
+        batches=batches,
         prefix="AllBatches_depth",
         dist=500000,
         frac=0.5,
         sample_overlap=0.5,
         blacklist=depth_blacklist,
-        blacklist_idx=depth_blacklist_idx,
         sv_size=5000,
         sv_types=["DEL","DUP"],
         contig=contig,
@@ -329,7 +301,6 @@ workflow Module05_06 {
         contig=contig,
         sv_pipeline_docker=sv_pipeline_docker,
         runtime_attr_override=runtime_override_merge_pesr_depth
-
     }
 
     #Update SR background fail & bothside pass files (2)
@@ -355,7 +326,7 @@ workflow Module05_06 {
     call MiniTasks.FilterVcf as SubsetInversions {
       input:
         vcf=MergePesrDepth.merged_vcf,
-        outfile_prefix="~{prefix}.~{contig}.inversions_only",
+        outfile_prefix="~{cohort_name}.~{contig}.inversions_only",
         records_filter="fgrep SVTYPE=INV",
         sv_base_mini_docker=sv_base_mini_docker,
         runtime_attr_override=runtime_override_subset_inversions
@@ -365,20 +336,15 @@ workflow Module05_06 {
     call ResolveComplexContig.ResolveComplexSv as ResolveCpxInv {
       input:
         vcf=SubsetInversions.filtered_vcf,
-        vcf_idx=SubsetInversions.filtered_vcf_idx,
-        prefix="~{prefix}.inv_only",
+        prefix="~{cohort_name}.inv_only",
         contig=contig,
         max_shards_per_chrom=max_shards_per_chrom,
         min_variants_per_shard=100,
         cytobands=cytobands,
-        cytobands_idx=cytobands_idx,
-        discfile_list=discfile_list,
-        discfile_idx_list=discfile_idx_list,
-        discfile_size_gb=GetDiscfileSize.discfile_size_gb,
+        disc_files=disc_files,
         mei_bed=mei_bed,
         pe_blacklist=pe_blacklist,
-        pe_blacklist_idx=pe_blacklist_idx,
-        rf_cutoffs=rf_cutoffs,
+        rf_cutoff_files=rf_cutoff_files,
         inv_only=true,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_base_mini_docker=sv_base_mini_docker,
@@ -394,7 +360,7 @@ workflow Module05_06 {
     call BreakpointOverlapFilter {
       input:
         vcf=MergePesrDepth.merged_vcf,
-        prefix="~{prefix}.~{contig}",
+        prefix="~{cohort_name}.~{contig}",
         bothside_pass=UpdateBothsidePassSecond.updated_list,
         background_fail=UpdateBackgroundFailSecond.updated_list,
         sv_pipeline_docker=sv_pipeline_docker,
@@ -405,20 +371,15 @@ workflow Module05_06 {
     call ResolveComplexContig.ResolveComplexSv as ResolveCpxAll {
       input:
         vcf=BreakpointOverlapFilter.bp_filtered_vcf,
-        vcf_idx=BreakpointOverlapFilter.bp_filtered_vcf_idx,
-        prefix="~{prefix}.all_variants",
+        prefix="~{cohort_name}.all_variants",
         contig=contig,
         max_shards_per_chrom=max_shards_per_chrom,
         min_variants_per_shard=100,
         cytobands=cytobands,
-        cytobands_idx=cytobands_idx,
-        discfile_list=discfile_list,
-        discfile_idx_list=discfile_idx_list,
-        discfile_size_gb=GetDiscfileSize.discfile_size_gb,
+        disc_files=disc_files,
         mei_bed=mei_bed,
         pe_blacklist=pe_blacklist,
-        pe_blacklist_idx=pe_blacklist_idx,
-        rf_cutoffs=rf_cutoffs,
+        rf_cutoff_files=rf_cutoff_files,
         inv_only=false,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_base_mini_docker=sv_base_mini_docker,
@@ -435,7 +396,7 @@ workflow Module05_06 {
       input:
         inv_res_vcf=ResolveCpxInv.resolved_vcf_merged,
         all_res_vcf=ResolveCpxAll.resolved_vcf_merged,
-        prefix="~{prefix}.resolved.~{contig}",
+        prefix="~{cohort_name}.resolved.~{contig}",
         sv_pipeline_docker=sv_pipeline_docker,
         runtime_attr_override=runtime_override_integrate_resolved_vcfs
     }
@@ -444,7 +405,7 @@ workflow Module05_06 {
     call RenameVariants {
       input:
         vcf=IntegrateResolvedVcfs.integrated_vcf,
-        prefix="~{prefix}.~{contig}",
+        prefix="~{cohort_name}.~{contig}",
         sv_pipeline_docker=sv_pipeline_docker,
         runtime_attr_override=runtime_override_rename_variants
     }
@@ -466,13 +427,18 @@ workflow Module05_06 {
         vcf=RenameVariants.renamed_vcf,
         n_master_vcf_shards=200,
         n_master_min_vars_per_vcf_shard=5000,
-        gt_input_files=MakeCpxCnvInputFile.outfile,
+        batches=batches,
+        coverage_files=bincov_files,
+        rd_depth_sep_cutoff_files=depth_gt_rd_sep_files,
+        samplelist_files=samplelist_files,
+        merged_ped_file=merged_ped_file,
+        median_coverage_files=median_coverage_files,
         n_per_split_small=2500,
         n_per_split_large=250,
         n_rd_test_bins=100000,
-        prefix=prefix,
+        prefix=cohort_name,
         contig=contig,
-        fam_file=fam_file,
+        ped_files=ped_files,
         sv_base_mini_docker=sv_base_mini_docker,
         sv_pipeline_docker=sv_pipeline_docker,
         sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
@@ -492,9 +458,9 @@ workflow Module05_06 {
         vcf=ScatterContigCpxGenotyping.cpx_depth_gt_resolved_vcf,
         contig=contig,
         background_list=UpdateBackgroundFailThird.updated_list,
-        fam_file=fam_file,
+        ped_file=merged_ped_file,
         bothsides_pass_list=UpdateBothsidePassThird.updated_list,
-        prefix=prefix,
+        prefix=cohort_name,
         max_shards_per_chrom_step1=max_shards_per_chrom_clean_vcf_step1,
         min_records_per_shard_step1=min_records_per_shard_clean_vcf_step1,
         samples_per_step2_shard=samples_per_clean_vcf_step2_shard,
@@ -532,92 +498,25 @@ workflow Module05_06 {
   call MiniTasks.ConcatVcfs as ConcatMidpointVcfs {
     input:
       vcfs=MergePesrDepth.merged_vcf,
-      outfile_prefix="~{prefix}.pesr_rd_merged",
+      outfile_prefix="~{cohort_name}.pesr_rd_merged",
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_override_concat_midpoint_vcfs
-  }
-
-  #Run midpoint QC on merged PESR+RD VCF across all chromosomes
-  call VcfQc.MasterVcfQc as MidpointQc {
-    input:
-      vcf=ConcatMidpointVcfs.concat_vcf,
-      vcf_idx=ConcatMidpointVcfs.concat_vcf_idx,
-      fam_file=trios_fam_file,
-      prefix="~{prefix}_pesr_rd_merged_VCF",
-      sv_per_shard=10000,
-      samples_per_shard=100,
-      ref_build=ref_build,
-      sanders_2015_tarball=sanders_2015_tarball,
-      collins_2017_tarball=collins_2017_tarball,
-      werling_2018_tarball=werling_2018_tarball,
-      contigs=contigs,
-      random_seed=random_seed,
-      sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      sv_base_mini_docker=sv_base_mini_docker,
-      sv_pipeline_docker=sv_pipeline_docker,
-      runtime_override_plot_qc_vcf_wide=runtime_override_plot_qc_vcf_wide,
-      runtime_override_thousand_g_benchmark=runtime_override_thousand_g_benchmark,
-      runtime_override_thousand_g_plot=runtime_override_thousand_g_plot,
-      runtime_override_asc_benchmark=runtime_override_asc_benchmark,
-      runtime_override_asc_plot=runtime_override_asc_plot,
-      runtime_override_hgsv_benchmark=runtime_override_hgsv_benchmark,
-      runtime_override_hgsv_plot=runtime_override_hgsv_plot,
-      runtime_override_plot_qc_per_sample=runtime_override_plot_qc_per_sample,
-      runtime_override_plot_qc_per_family=runtime_override_plot_qc_per_family,
-      runtime_override_sanders_per_sample_plot=runtime_override_sanders_per_sample_plot,
-      runtime_override_collins_per_sample_plot=runtime_override_collins_per_sample_plot,
-      runtime_override_werling_per_sample_plot=runtime_override_werling_per_sample_plot,
-      runtime_override_sanitize_outputs=runtime_override_sanitize_outputs,
-      runtime_override_merge_vcfwide_stat_shards=runtime_override_merge_vcfwide_stat_shards,
-      runtime_override_merge_vcf_2_bed=runtime_override_merge_vcf_2_bed,
-      runtime_override_collect_sharded_vcf_stats=runtime_override_collect_sharded_vcf_stats,
-      runtime_override_svtk_vcf_2_bed=runtime_override_svtk_vcf_2_bed,
-      runtime_override_split_vcf_to_qc=runtime_override_split_vcf_to_qc,
-      runtime_override_merge_subvcf_stat_shards=runtime_override_merge_subvcf_stat_shards,
-      runtime_override_merge_svtk_vcf_2_bed=runtime_override_merge_svtk_vcf_2_bed,
-      runtime_override_collect_vids_per_sample=runtime_override_collect_vids_per_sample,
-      runtime_override_split_samples_list=runtime_override_split_samples_list,
-      runtime_override_tar_shard_vid_lists=runtime_override_tar_shard_vid_lists,
-      runtime_override_benchmark_samples=runtime_override_benchmark_samples,
-      runtime_override_split_shuffled_list=runtime_override_split_shuffled_list,
-      runtime_override_merge_and_tar_shard_benchmarks=runtime_override_merge_and_tar_shard_benchmarks
   }
 
   #Merge final resolved vcfs for 04b final QC
   call MiniTasks.ConcatVcfs as ConcatFinalVcfs {
     input:
       vcfs=ScatterContigCpxGenotyping.cpx_depth_gt_resolved_vcf,
-      outfile_prefix="~{prefix}.resolved_regenotyped",
+      outfile_prefix="~{cohort_name}.resolved_regenotyped",
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_override_concat_final_vcfs
-
-  }
-
-  #Run final QC on resolved VCF across all chromosomes
-  call VcfQc.MasterVcfQc as FinalQc {
-    input:
-      vcf=ConcatFinalVcfs.concat_vcf,
-      vcf_idx=ConcatFinalVcfs.concat_vcf_idx,
-      fam_file=trios_fam_file,
-      prefix="~{prefix}_resolved_VCF",
-      sv_per_shard=10000,
-      samples_per_shard=100,
-      ref_build=ref_build,
-      sanders_2015_tarball=sanders_2015_tarball,
-      collins_2017_tarball=collins_2017_tarball,
-      werling_2018_tarball=werling_2018_tarball,
-      contigs=contigs,
-      random_seed=random_seed,
-      sv_pipeline_qc_docker=sv_pipeline_qc_docker,
-      sv_base_mini_docker=sv_base_mini_docker,
-      sv_pipeline_docker=sv_pipeline_docker,
   }
 
   #Merge final cleaned vcfs for 05 final QC
   call MiniTasks.ConcatVcfs as ConcatCleanedVcfs {
     input:
       vcfs=CleanContigVcf.out,
-      outfile_prefix="~{prefix}.cleaned",
+      outfile_prefix="~{cohort_name}.cleaned",
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_override_concat_cleaned_vcfs
   }
@@ -626,9 +525,8 @@ workflow Module05_06 {
   call VcfQc.MasterVcfQc as QcCleanedVcf {
     input:
       vcf=ConcatCleanedVcfs.concat_vcf,
-      vcf_idx=ConcatCleanedVcfs.concat_vcf_idx,
-      fam_file=trios_fam_file,
-      prefix="~{prefix}_cleaned_VCF",
+      ped_file=merged_ped_file,
+      prefix="~{cohort_name}_cleaned_VCF",
       sv_per_shard=10000,
       samples_per_shard=100,
       ref_build=ref_build,
@@ -646,59 +544,9 @@ workflow Module05_06 {
   output {
     File final_04b_vcf = ConcatFinalVcfs.concat_vcf
     File final_04b_vcf_idx = ConcatFinalVcfs.concat_vcf_idx
-    File midpoint_04b_vcf_qc = MidpointQc.sv_vcf_qc_output
-    File final_04b_vcf_qc = FinalQc.sv_vcf_qc_output
     File cleaned_vcf = ConcatCleanedVcfs.concat_vcf
     File cleaned_vcf_idx = ConcatCleanedVcfs.concat_vcf_idx
     File cleaned_vcf_qc = QcCleanedVcf.sv_vcf_qc_output
-  }
-}
-
-
-task GetDiscfileSize {
-  input {
-    File discfile_list
-    String sv_pipeline_docker
-    RuntimeAttr? runtime_attr_override
-  }
-
-  String discfile_size_file_name = "discfile_size.txt"
-
-  Float input_size = size(discfile_list, "GiB")
-  Float base_disk_gb = 5.0
-  Float base_mem_gb = 2.0
-  RuntimeAttr runtime_default = object {
-    mem_gb: base_mem_gb,
-    disk_gb: ceil(base_disk_gb + input_size),
-    cpu_cores: 1,
-    preemptible_tries: 3,
-    max_retries: 1,
-    boot_disk_gb: 10
-  }
-  RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
-  runtime {
-    memory: "~{select_first([runtime_override.mem_gb, runtime_default.mem_gb])} GiB"
-    disks: "local-disk ~{select_first([runtime_override.disk_gb, runtime_default.disk_gb])} HDD"
-    cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
-    preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
-    maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
-    docker : sv_pipeline_docker
-    bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
-  }
-
-  command <<<
-    set -eu -o pipefail
-    export GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token`
-
-    # shouldn't be many discfiles, so join them on one line and save the overhead of multiple gsutil calls
-    gsutil du -c $(tr -s $'\n' ' ' < ~{discfile_list}) \
-      | awk 'END {print $1 / 2^30}' \
-      > ~{discfile_size_file_name}
-  >>>
-
-  output {
-    File discfile_size_file = discfile_size_file_name
-    Float discfile_size_gb = read_float(discfile_size_file)
   }
 }
 

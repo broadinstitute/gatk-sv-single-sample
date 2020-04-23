@@ -159,7 +159,7 @@ task MergeSample {
   command <<<
 
     set -euo pipefail
-    zcat ~{sep=" " cnmops} | awk '{if ($5=="~{sample_id}") print}' > cnmops.cnv
+    zcat ~{sep=" " cnmops} | awk -F "\t" -v OFS="\t" '{if ($5=="~{sample_id}") print}' > cnmops.cnv
     cat ~{gcnv} cnmops.cnv | sort -k1,1V -k2,2n > ~{sample_id}.bed
     bedtools merge -i ~{sample_id}.bed -d 0 -c 4,5,6,7 -o distinct > ~{sample_id}_merged.bed
     

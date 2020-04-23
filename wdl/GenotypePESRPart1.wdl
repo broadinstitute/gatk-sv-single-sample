@@ -15,7 +15,6 @@ import "TrainSRGenotyping.wdl" as sr_train
 workflow GenotypePESRPart1 {
   input {
     File bin_exclude
-    File bin_exclude_idx
     File batch_vcf
     String batch
     File coveragefile     # batch coverage file
@@ -63,7 +62,6 @@ workflow GenotypePESRPart1 {
   call rd_train.TrainRDGenotyping as TrainRDGenotyping {
     input:
       bin_exclude=bin_exclude,
-      bin_exclude_idx=bin_exclude_idx,
       rf_cutoffs = rf_cutoffs,
       medianfile = medianfile,
       n_bins = n_RD_genotype_bins,
@@ -71,7 +69,7 @@ workflow GenotypePESRPart1 {
       coveragefile = coveragefile,
       famfile = famfile,
       n_per_split = n_per_RD_split,
-      prefix = batch,
+      prefix = "~{batch}.pesr",
       seed_cutoffs = seed_cutoffs,
       reference_build = reference_build,
       samples = samples,

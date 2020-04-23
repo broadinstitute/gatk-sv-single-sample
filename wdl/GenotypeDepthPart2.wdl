@@ -14,7 +14,6 @@ import "Tasks04.wdl" as tasks04
 workflow GenotypeDepthPart2 {
   input {
     File bin_exclude
-    File bin_exclude_idx
     File cohort_vcf
     File RD_pesr_sepcutoff
     File RD_depth_sepcutoff
@@ -39,6 +38,8 @@ workflow GenotypeDepthPart2 {
     RuntimeAttr? runtime_attr_add_genotypes
     RuntimeAttr? runtime_attr_concat_vcfs
   }
+
+  File bin_exclude_idx = bin_exclude + ".tbi"
 
   call tasks04.SplitVariants as SplitVariants {
   input:

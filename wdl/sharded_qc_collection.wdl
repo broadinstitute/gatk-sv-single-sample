@@ -8,12 +8,11 @@ version 1.0
 
 # Workflow to gather SV VCF summary stats for an input VCF
 
-import "common_mini_tasks.wdl" as MiniTasks
+import "Tasks0506.wdl" as MiniTasks
 
 workflow ShardedQcCollection {
   input {
     File vcf
-    File vcf_idx
     String contig
     Int sv_per_shard
     String prefix
@@ -30,7 +29,9 @@ workflow ShardedQcCollection {
     RuntimeAttr? runtime_override_merge_subvcf_stat_shards
     RuntimeAttr? runtime_override_merge_svtk_vcf_2_bed
   }
-  
+
+  File vcf_idx = vcf + ".tbi"
+
   # Tabix to chromosome of interest, and shard input VCF for stats collection
   call MiniTasks.SplitVcf as SplitVcfToQc {
     input:

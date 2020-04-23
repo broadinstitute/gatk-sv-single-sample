@@ -9,7 +9,7 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "Tasks0506.wdl" as MiniTasks
 
 # Workflow to perform depth-based genotyping per batch
 # on predicted CPX CNVs from 04b
@@ -24,10 +24,9 @@ workflow GenotypeCpxCnvsPerBatch {
     Int n_rd_test_bins
     String batch
     File median_file
-    File fam_file
+    File ped_file
     File samples_list
-    String coverage_file
-    File coverage_file_idx
+    File coverage_file
 
     String sv_base_mini_docker
     String sv_pipeline_rdtest_docker
@@ -39,7 +38,9 @@ workflow GenotypeCpxCnvsPerBatch {
     # overrides for MiniTasks
     RuntimeAttr? runtime_override_concat_melted_genotypes
   }
-  
+
+  File coverage_file_idx = coverage_file + ".tbi"
+
   call SplitBedBySize {
     input:
       bed=cpx_bed,
@@ -58,7 +59,7 @@ workflow GenotypeCpxCnvsPerBatch {
         coverage_file=coverage_file,
         coverage_file_idx=coverage_file_idx,
         median_file=median_file,
-        fam_file=fam_file,
+        ped_file=ped_file,
         samples_list=samples_list,
         gt_cutoffs=rd_depth_sep_cutoff,
         n_bins=n_rd_test_bins,
@@ -175,10 +176,10 @@ task SplitBedBySize {
 task RdTestGenotype {
   input {
     File bed
-    String coverage_file
+    File coverage_file
+    File coverage_file_idx
     File median_file
-    File? coverage_file_idx
-    File fam_file
+    File ped_file
     File samples_list
     File bin_exclude
     File gt_cutoffs
@@ -188,13 +189,19 @@ task RdTestGenotype {
     RuntimeAttr? runtime_attr_override
   }
 
+  parameter_meta {
+    coverage_file: {
+      localization_optional: true
+    }
+  }
+
   # when filtering/sorting/etc, memory usage will likely go up (much of the data will have to
   # be held in memory or disk while working, potentially in a form that takes up more space)
   # NOTE: doubled representation of "bed" below is NOT A TYPO
   #  bincov information is remote-tabixed in, preventing accurate measurement of size, but the bincov
   #  info is at lower resolution than the input bed file, so an upper estimate can be obtained by just
   #  doubling the representation of "bed" in the input size
-  Float input_size = size([bed, bed, median_file, fam_file, samples_list, gt_cutoffs], "GiB")
+  Float input_size = size([bed, bed, median_file, ped_file, samples_list, gt_cutoffs], "GiB")
   Float compression_factor = 5.0
   Float base_disk_gb = 5.0
   Float base_mem_gb = 2.0
@@ -246,7 +253,7 @@ task RdTestGenotype {
       -b ~{bed} \
       -c local_coverage.bed.gz \
       -m ~{median_file} \
-      -f ~{fam_file} \
+      -f ~{ped_file} \
       -n ~{prefix} \
       -w ~{samples_list} \
       -i ~{n_bins} \

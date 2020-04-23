@@ -25,6 +25,9 @@ workflow SRTest {
     File male_samples
     File female_samples
     File samples
+    Boolean run_common
+    Int? common_cnv_size_cutoff  # Required if run_common is true
+    Int tabix_retries
 
     String sv_pipeline_docker
     String linux_docker
@@ -55,6 +58,9 @@ workflow SRTest {
         male_samples = male_samples,
         female_samples = female_samples,
         allosome = false,
+        run_common = run_common,
+        common_cnv_size_cutoff = common_cnv_size_cutoff,
+        tabix_retries = tabix_retries,
         sv_base_mini_docker = sv_base_mini_docker,
         linux_docker = linux_docker,
         sv_pipeline_docker = sv_pipeline_docker,
@@ -81,6 +87,9 @@ workflow SRTest {
         male_samples = male_samples,
         female_samples = female_samples,
         allosome = true,
+        run_common = run_common,
+        common_cnv_size_cutoff = common_cnv_size_cutoff,
+        tabix_retries = tabix_retries,
         sv_base_mini_docker = sv_base_mini_docker,
         linux_docker = linux_docker,
         sv_pipeline_docker = sv_pipeline_docker,
@@ -100,8 +109,19 @@ workflow SRTest {
       runtime_attr_override = runtime_attr_merge_stats
   }
 
+  if (run_common) {
+    call tasks02.MergeStats as MergeStatsCommon {
+      input:
+        stats = select_all(SRTestAutosome.stats_common),
+        prefix = "${batch}.${algorithm}.common",
+        linux_docker = linux_docker,
+        runtime_attr_override = runtime_attr_merge_stats
+    }
+  }
+
   output {
     File srtest = MergeStats.merged_stats
+    File? srtest_common = MergeStatsCommon.merged_stats
   }
 }
 

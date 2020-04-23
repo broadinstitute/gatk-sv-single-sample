@@ -15,29 +15,53 @@ workflow TinyResolve {
     Array[String]+ samples         # Sample ID
     Array[File]+ manta_vcfs        # Manta VCF
     File cytoband
-    File cytoband_idx
     Array[File]+ discfile
-    Array[File]+ discfile_idx
     File mei_bed
+    Int samples_per_shard = 25
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr
   }
 
-  call ResolveManta {
-    input:
-      raw_vcfs=manta_vcfs,
-      samples=samples,
-      sv_pipeline_docker = sv_pipeline_docker,
-      cytoband=cytoband,
-      cytoband_idx=cytoband_idx,
-      discfile=discfile,
-      discfile_idx=discfile_idx,
-      mei_bed=mei_bed,
-      runtime_attr_override=runtime_attr
+  scatter (disc in discfile) {
+    File discfile_idx = disc + ".tbi"
+  }
+  File cytoband_idx = cytoband + ".tbi"
+
+  Int num_samples = length(samples)
+  Float num_samples_float = num_samples
+  Int num_shards = ceil(num_samples_float / samples_per_shard)
+
+  scatter (i in range(num_shards)) {
+    scatter (j in range(samples_per_shard)) {
+      Int idx_ = i * samples_per_shard + j
+      if (idx_ < num_samples) {
+        String shard_samples_ = samples[idx_]
+        File shard_vcfs_ = manta_vcfs[idx_]
+        File shard_discfiles_ = discfile[idx_]
+        File shard_discfiles_idx_ = discfile_idx[idx_]
+      }
+    }
+    Array[String] shard_samples = select_all(shard_samples_)
+    Array[File] shard_vcfs = select_all(shard_vcfs_)
+    Array[File] shard_discfiles = select_all(shard_discfiles_)
+    Array[File] shard_discfiles_idx = select_all(shard_discfiles_idx_)
+
+    call ResolveManta {
+      input:
+        raw_vcfs=shard_vcfs,
+        samples=shard_samples,
+        sv_pipeline_docker = sv_pipeline_docker,
+        cytoband=cytoband,
+        cytoband_idx=cytoband_idx,
+        discfile=shard_discfiles,
+        discfile_idx=shard_discfiles_idx,
+        mei_bed=mei_bed,
+        runtime_attr_override=runtime_attr
+    }
   }
 
   output {
-    Array[File]+ tloc_manta_vcf = ResolveManta.tloc_vcf
+    Array[File]+ tloc_manta_vcf = flatten(ResolveManta.tloc_vcf)
   }
 }
 
@@ -62,7 +86,7 @@ task ResolveManta {
     disk_gb: ceil(10+input_size),
     boot_disk_gb: 10,
     preemptible_tries: 3,
-    max_retries: 3
+    max_retries: 1
   }
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 

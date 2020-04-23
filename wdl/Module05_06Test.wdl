@@ -7,13 +7,18 @@ import "TestUtils.wdl" as utils
 workflow Module05_06Test {
   input {
     String test_name
-    Array[String] samples
+    Array[File] samplelist_files
     String base_metrics
   }
 
+  scatter (samplelist in samplelist_files) {
+    Array[String] samplelist_file = read_lines(samplelist)
+  }
+  Array[String] samples = flatten(samplelist_file)
+
   call module.Module05_06 {
     input:
-      samples = samples
+      samplelist_files = samplelist_files
   }
 
   call metrics.Module05_06Metrics {

@@ -8,21 +8,20 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "05_06_structs.wdl"
-import "05_06_common_mini_tasks.wdl" as MiniTasks
-import "05_06_cluster_single_chrom.wdl" as VcfClusterTasks
+import "Structs.wdl"
+import "Tasks0506.wdl" as MiniTasks
+import "ClusterSingleChromosome.wdl" as VcfClusterTasks
 
 # Workflow to run parallelized vcf clustering for a single chromosome
 workflow VcfClusterSingleChrom {
   input {
-    File vcf_list
+    Array[File] vcfs
     String prefix
     Int dist
     Float frac
     Float sample_overlap
     File? blacklist
-    File? blacklist_idx
-    File batches_list
+    Array[String] batches
     Int sv_size
     Array[String] sv_types
     String contig
@@ -55,8 +54,8 @@ workflow VcfClusterSingleChrom {
   #Remote tabix each vcf & join into a single vcf
   call JoinContigFromRemoteVcfs as JoinVcfs {
     input:
-      vcf_list=vcf_list,
-      batches_list=batches_list,
+      vcfs=vcfs,
+      batches=batches,
       contig=contig,
       prefix=prefix,
       sv_pipeline_docker=sv_pipeline_docker,
@@ -67,7 +66,6 @@ workflow VcfClusterSingleChrom {
   call VcfClusterTasks.ClusterSingleChrom as ClusterSingleChrom {
     input:
       vcf=JoinVcfs.joined_vcf,
-      vcf_idx=JoinVcfs.joined_vcf_idx,
       contig=contig,
       prefix=prefix,
       max_shards=max_shards_per_chrom_svtype,
@@ -76,7 +74,6 @@ workflow VcfClusterSingleChrom {
       frac=frac,
       sample_overlap=sample_overlap,
       blacklist=blacklist,
-      blacklist_idx=blacklist_idx,
       sv_size=sv_size,
       sv_types=sv_types,
       sv_pipeline_docker=sv_pipeline_docker,
@@ -123,41 +120,47 @@ workflow VcfClusterSingleChrom {
 # Task to remote tabix a single chromosome for all VCFs, then merge row-wise
 task JoinContigFromRemoteVcfs {
   input {
-    File vcf_list
-    File batches_list
+    Array[File] vcfs
+    Array[String] batches
     String contig
     String prefix
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
 
-    # when filtering/sorting/etc, memory usage will likely go up (much of the data will have to
-    # be held in memory or disk while working, potentially in a form that takes up more space)
-    Int num_vcfs = length(read_lines(vcf_list))
-    Float max_vcf_size_gb = 0.5
-    Float input_size = max_vcf_size_gb * num_vcfs
-    #Float input_size = size([vcf_list, batches_list], "GiB")
-    Float compression_factor = 5.0
-    Float base_disk_gb = 5.0
-    Float base_mem_gb = 2.0
-    RuntimeAttr runtime_default = object {
-      mem_gb: base_mem_gb + compression_factor * input_size,
-      disk_gb: ceil(base_disk_gb + input_size * (2.0 + 2.0 * compression_factor)),
-      cpu_cores: 1,
-      preemptible_tries: 3,
-      max_retries: 1,
-      boot_disk_gb: 10
+  parameter_meta {
+    vcfs: {
+      localization_optional: true
     }
-    RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
-    runtime {
-      memory: "~{select_first([runtime_override.mem_gb, runtime_default.mem_gb])} GiB"
-      disks: "local-disk ~{select_first([runtime_override.disk_gb, runtime_default.disk_gb])} HDD"
-      cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
-      preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
-      maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
-      docker: sv_pipeline_docker
-      bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
-    }
+  }
+
+  # when filtering/sorting/etc, memory usage will likely go up (much of the data will have to
+  # be held in memory or disk while working, potentially in a form that takes up more space)
+  Int num_vcfs = length(vcfs)
+  Float max_vcf_size_gb = 0.5
+  Float input_size = max_vcf_size_gb * num_vcfs
+  #Float input_size = size([vcf_list, batches_list], "GiB")
+  Float compression_factor = 5.0
+  Float base_disk_gb = 5.0
+  Float base_mem_gb = 2.0
+  RuntimeAttr runtime_default = object {
+    mem_gb: base_mem_gb + compression_factor * input_size,
+    disk_gb: ceil(base_disk_gb + input_size * (2.0 + 2.0 * compression_factor)),
+    cpu_cores: 1,
+    preemptible_tries: 3,
+    max_retries: 1,
+    boot_disk_gb: 10
+  }
+  RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
+  runtime {
+    memory: "~{select_first([runtime_override.mem_gb, runtime_default.mem_gb])} GiB"
+    disks: "local-disk ~{select_first([runtime_override.disk_gb, runtime_default.disk_gb])} HDD"
+    cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
+    preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
+    maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
+    docker: sv_pipeline_docker
+    bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
+  }
   
   command <<<
     set -eu -o pipefail
@@ -168,7 +171,7 @@ task JoinContigFromRemoteVcfs {
     # needed for tabix to operate on remote files
     export GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token`
 
-    paste ~{batches_list} ~{vcf_list} | while read BATCH VCF_PATH; do
+    paste ~{write_lines(batches)} ~{write_lines(vcfs)} | while read BATCH VCF_PATH; do
       1>&2 echo "BATCH=$BATCH"
       1>&2 echo "VCF_PATH=$VCF_PATH"
       if gsutil ls "$VCF_PATH*" | grep -q '\.tbi$' || false; then

@@ -2,7 +2,7 @@ version 1.0
 
 import "TestUtils.wdl" as tu
 
-workflow ClinicalMetrics {
+workflow SingleSampleMetrics {
   input {
     String name
     Array[String] ref_samples
@@ -107,7 +107,7 @@ workflow ClinicalMetrics {
       sv_pipeline_base_docker = sv_pipeline_base_docker
   }
 
-  call ClinicalWGDMetrics {
+  call SingleSampleWGDMetrics {
     input:
       wgd_scores = wgd_scores,
       linux_docker = linux_docker
@@ -115,8 +115,8 @@ workflow ClinicalMetrics {
 
   call tu.CatMetrics {
     input:
-      prefix = "clinical." + name,
-      metric_files = [ClinicalWGDMetrics.out, SRMetrics.out, PEMetrics.out, CountsMetrics.out, Genotyped_PESR_VCF_Metrics.out, Genotyped_Depth_VCF_Metrics.out, Cleaned_VCF_Metrics.out, Final_VCF_Metrics.out, NonGenotypedUniqueDepthCallsVCFMetrics.out],
+      prefix = "single_sample." + name,
+      metric_files = [SingleSampleWGDMetrics.out, SRMetrics.out, PEMetrics.out, CountsMetrics.out, Genotyped_PESR_VCF_Metrics.out, Genotyped_Depth_VCF_Metrics.out, Cleaned_VCF_Metrics.out, Final_VCF_Metrics.out, NonGenotypedUniqueDepthCallsVCFMetrics.out],
       search_string = case_sample,
       replace_string = "sample",
       linux_docker = linux_docker
@@ -127,7 +127,7 @@ workflow ClinicalMetrics {
   }
 }
 
-task ClinicalWGDMetrics {
+task SingleSampleWGDMetrics {
   input {
     File wgd_scores
     String linux_docker

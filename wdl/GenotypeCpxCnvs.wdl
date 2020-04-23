@@ -8,8 +8,8 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "05_06_genotype_cpx_cnvs_per_batch.wdl" as RunDepthGenotypePerBatch
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "GenotypeCpxCnvsPerBatch.wdl" as RunDepthGenotypePerBatch
+import "Tasks0506.wdl" as MiniTasks
 
 # Workflow to perform depth-based genotyping for a single vcf shard scattered
 # across batches on predicted CPX CNVs from 04b
@@ -17,12 +17,17 @@ workflow GenotypeCpxCnvs {
   input {
     File bin_exclude
     File vcf
-    File gt_input_files
+    Array[String] batches
+    Array[File] coverage_files
+    Array[File] rd_depth_sep_cutoff_files
+    Array[File] samplelist_files
+    Array[File] ped_files
+    Array[File] median_coverage_files
     Int n_per_split_small
     Int n_per_split_large
     Int n_rd_test_bins
     String prefix
-    File fam_file
+    File merged_ped_file
     String contig
 
     String sv_base_mini_docker
@@ -41,8 +46,7 @@ workflow GenotypeCpxCnvs {
     RuntimeAttr? runtime_override_rd_genotype
     RuntimeAttr? runtime_override_concat_melted_genotypes
   }
-  
-  Array[Array[String]] gt_input_array = read_tsv(gt_input_files)
+
   String contig_prefix = prefix + "." + contig
 
   # Convert VCF to bed of CPX CNV intervals
@@ -55,18 +59,17 @@ workflow GenotypeCpxCnvs {
   }
 
   # Scatter over each batch (row) in gt_input_files and run depth genotyping
-  scatter (gt_inputs in gt_input_array) {
+  scatter (i in range(length(batches))) {
     call RunDepthGenotypePerBatch.GenotypeCpxCnvsPerBatch as GenotypeBatch {
       input:
         bin_exclude=bin_exclude,
         cpx_bed=GetCpxCnvIntervals.cpx_cnv_bed,
-        batch=gt_inputs[0],
-        coverage_file=gt_inputs[1],
-        coverage_file_idx=gt_inputs[2],
-        rd_depth_sep_cutoff=gt_inputs[3],
-        samples_list=gt_inputs[4],
-        fam_file=gt_inputs[5],
-        median_file=gt_inputs[6],
+        batch=batches[i],
+        coverage_file=coverage_files[i],
+        rd_depth_sep_cutoff=rd_depth_sep_cutoff_files[i],
+        samples_list=samplelist_files[i],
+        ped_file=ped_files[i],
+        median_file=median_coverage_files[i],
         n_per_split_small=n_per_split_small,
         n_per_split_large=n_per_split_large,
         n_rd_test_bins=n_rd_test_bins,
@@ -95,7 +98,7 @@ workflow GenotypeCpxCnvs {
       intervals=GetCpxCnvIntervals.cpx_cnv_bed,
       genotypes=MergeMeltedGts.outfile,
       prefix=contig_prefix,
-      fam_file=fam_file,
+      ped_file=merged_ped_file,
       contig=contig,
       sv_pipeline_docker=sv_pipeline_docker,
       runtime_attr_override=runtime_override_parse_genotypes
@@ -166,7 +169,7 @@ task ParseGenotypes {
     File vcf
     File intervals
     File genotypes
-    File fam_file
+    File ped_file
     String prefix
     String contig
     String sv_pipeline_docker
@@ -175,7 +178,7 @@ task ParseGenotypes {
 
   # when filtering/sorting/etc, memory usage will likely go up (much of the data will have to
   # be held in memory or disk while working, potentially in a form that takes up more space)
-  Float input_size = size([vcf, intervals, genotypes, fam_file], "GiB")
+  Float input_size = size([vcf, intervals, genotypes, ped_file], "GiB")
   Float compression_factor = 5.0
   Float base_disk_gb = 5.0
   Float base_mem_gb = 2.0
@@ -207,7 +210,7 @@ task ParseGenotypes {
       ~{vcf} \
       ~{intervals} \
       ~{genotypes} \
-      ~{fam_file} \
+      ~{ped_file} \
       ~{prefix}.postCPXregenotyping.~{contig}.vcf.gz
   >>>
 

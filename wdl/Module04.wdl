@@ -11,7 +11,7 @@ version 1.0
 import "GenotypePESRPart1.wdl" as gp1
 import "GenotypePESRPart2.wdl" as gp2
 import "GenotypeDepthPart1.wdl" as gd1
-import "GenotypeDepthPart2_regeno.wdl" as gd2_r
+import "GenotypeDepthPart2.wdl" as gd2
 import "Tasks04.wdl" as tasks04
 workflow Module04 {
   input {
@@ -36,8 +36,7 @@ workflow Module04 {
     File? cohort_combined_bed
     File? cohort_sort
     File bin_exclude
-    File bin_exclude_idx
-    # If all specified, training will be skipped (for clinical pipeline)
+    # If all specified, training will be skipped (for single sample pipeline)
     File? genotype_pesr_pesr_sepcutoff
     File? genotype_pesr_depth_sepcutoff
     File? genotype_depth_pesr_sepcutoff
@@ -119,7 +118,6 @@ workflow Module04 {
     call gp1.GenotypePESRPart1 as GenotypePESRPart1 {
       input:
         bin_exclude=bin_exclude,
-        bin_exclude_idx=bin_exclude_idx,
         samples = samples,
         pesr_blacklist = select_first([pesr_blacklist]),
         discfile = discfile,
@@ -159,7 +157,6 @@ workflow Module04 {
   call gp2.GenotypePESRPart2 as GenotypePESRPart2 {
     input:
       bin_exclude=bin_exclude,
-      bin_exclude_idx=bin_exclude_idx,
       samples = samples,
       discfile = discfile,
       PE_metrics = select_first([PE_metrics, GenotypePESRPart1.PE_metrics]),
@@ -196,7 +193,6 @@ workflow Module04 {
     call gd1.GenotypeDepthPart1 as GenotypeDepthPart1 {
       input:
         bin_exclude=bin_exclude,
-        bin_exclude_idx=bin_exclude_idx,
         samples = samples,
         n_RD_genotype_bins = n_RD_genotype_bins,
         batch_vcf = batch_depth_vcf,
@@ -220,10 +216,9 @@ workflow Module04 {
         runtime_attr_merge_genotypes = runtime_attr_merge_genotypes
     }
   }
-  call gd2_r.GenotypeDepthPart2 as GenotypeDepthPart2 {
+  call gd2.GenotypeDepthPart2 as GenotypeDepthPart2 {
     input:
       bin_exclude=bin_exclude,
-      bin_exclude_idx=bin_exclude_idx,
       samples = samples,
       n_RdTest_bins = n_RD_genotype_bins,
       medianfile = medianfile,

@@ -1,26 +1,26 @@
 version 1.0
 
-import "module00a/Module00a.wdl" as m00a
-import "module00b/Module00b.wdl" as m00b
-import "module00b/PloidyEstimation.wdl" as pe
-import "module00c/Module00c.wdl" as m00c
-import "module00c/DepthPreprocessing.wdl" as dpn
-import "module01/Module01.wdl" as m01
-import "module02/Module02.wdl" as m02
-import "module02/SRTest.wdl" as SRTest
-import "module03/Module03.wdl" as m03
-import "module04/Module04.wdl" as m04
-import "module05_06/Module05_06.wdl" as m0506
-import "gcnv/GermlineCNVCase.wdl" as gcnv
-import "ClinicalFiltering.wdl" as ClinicalFiltering
-import "GATKSVPipelineClinicalMetrics.wdl" as ClinicalMetrics
+import "Module00a.wdl" as m00a
+import "Module00b.wdl" as m00b
+import "PloidyEstimation.wdl" as pe
+import "Module00c.wdl" as m00c
+import "DepthPreprocessing.wdl" as dpn
+import "Module01.wdl" as m01
+import "Module02.wdl" as m02
+import "SRTest.wdl" as SRTest
+import "Module03.wdl" as m03
+import "Module04.wdl" as m04
+import "Module05_06.wdl" as m0506
+import "GermlineCNVCase.wdl" as gcnv
+import "SingleSampleFiltering.wdl" as SingleSampleFiltering
+import "GATKSVPipelineSingleSampleMetrics.wdl" as SingleSampleMetrics
 import "Utils.wdl" as utils
 import "Structs.wdl"
 
 # GATK SV Pipeline single sample mode
 # Runs Modules 00abc, 01, 03.MergePesrVcfs, 04, 05/06
 
-workflow GATKSVPipelineClinical {
+workflow GATKSVPipelineSingleSample {
   input {
     # Batch info
     String batch
@@ -181,7 +181,11 @@ workflow GATKSVPipelineClinical {
     Int? evidence_merging_SR_size_mb
     Int? evidence_merging_bincov_size_mb
     Int? evidence_merging_disk_overhead_gb            # Fixed extra disk
-    RuntimeAttr? evidence_merging_pesr_runtime_attr   # Disk space ignored, use evidence_merging_<BAF/PE/SR>_size_mb
+    RuntimeAttr? runtime_attr_shard_pe
+    RuntimeAttr? runtime_attr_merge_pe
+    RuntimeAttr? runtime_attr_shard_sr
+    RuntimeAttr? runtime_attr_merge_sr
+    RuntimeAttr? set_sample_runtime_attr
     RuntimeAttr? evidence_merging_bincov_runtime_attr # Disk space ignored, use evidence_merging_bincov_size_mb
 
     RuntimeAttr? cnmops_sample10_runtime_attr   # Memory ignored if cnmops_mem_gb_override_sample10 given
@@ -243,6 +247,7 @@ workflow GATKSVPipelineClinical {
 
     File rmsk
     File segdups
+    Int tabix_retries = 5
 
     Int? min_large_pesr_call_size_for_filtering
     Float? min_large_pesr_depth_overlap_fraction
@@ -274,7 +279,6 @@ workflow GATKSVPipelineClinical {
     File PE_metrics
 
     File bin_exclude
-    File bin_exclude_idx
 
     # Common
     RuntimeAttr? runtime_attr_split_vcf
@@ -311,13 +315,10 @@ workflow GATKSVPipelineClinical {
     Int clean_vcf_min_variants_per_shard
 
     File cytobands
-    File cytobands_idx
 
     File mei_bed
     File pe_blacklist
-    File pe_blacklist_idx
     File depth_blacklist
-    File depth_blacklist_idx
     File empty_file
 
     Int clean_vcf_max_shards_per_chrom_clean_vcf_step1
@@ -342,7 +343,7 @@ workflow GATKSVPipelineClinical {
     RuntimeAttr? runtime_override_make_cpx_cnv_input_file
 
     ############################################################
-    ## Clinical filtering
+    ## Single sample filtering
     ############################################################
 
     Float? max_ref_panel_carrier_freq
@@ -425,9 +426,7 @@ workflow GATKSVPipelineClinical {
       counts=select_first([Module00a.coverage_counts, emptyFileArray]),
       ref_panel_bincov_matrix=ref_panel_bincov_matrix,
       PE_files=select_first([Module00a.pesr_disc, emptyFileArray]),
-      PE_files_idx=select_first([Module00a.pesr_disc_index, emptyFileArray]),
       cytoband=cytobands,
-      cytoband_idx=cytobands_idx,
       mei_bed=mei_bed,
       ref_panel_PE_files=ref_pesr_disc_files,
       SR_files=select_first([Module00a.pesr_split, emptyFileArray]),
@@ -491,7 +490,11 @@ workflow GATKSVPipelineClinical {
       evidence_merging_SR_size_mb=evidence_merging_SR_size_mb,
       evidence_merging_bincov_size_mb=evidence_merging_bincov_size_mb,
       evidence_merging_disk_overhead_gb=evidence_merging_disk_overhead_gb,
-      evidence_merging_pesr_runtime_attr=evidence_merging_pesr_runtime_attr,
+      set_sample_runtime_attr = set_sample_runtime_attr,
+      runtime_attr_shard_pe = runtime_attr_shard_pe,
+      runtime_attr_merge_pe = runtime_attr_merge_pe,
+      runtime_attr_shard_sr = runtime_attr_shard_sr,
+      runtime_attr_merge_sr = runtime_attr_merge_sr,
       evidence_merging_bincov_runtime_attr=evidence_merging_bincov_runtime_attr,
       cnmops_sample10_runtime_attr=cnmops_sample10_runtime_attr,
       cnmops_sample3_runtime_attr=cnmops_sample3_runtime_attr,
@@ -564,7 +567,7 @@ workflow GATKSVPipelineClinical {
   }
 
   # Pull out clustered calls from this sample only
-  call ClinicalFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterManta {
+  call SingleSampleFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterManta {
     input :
       vcf_gz=select_first([Module01.manta_vcf]),
       sample_id=sample_id,
@@ -572,7 +575,7 @@ workflow GATKSVPipelineClinical {
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_filter_vcf_by_id
   }
-  call ClinicalFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterWham {
+  call SingleSampleFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterWham {
     input :
       vcf_gz=select_first([Module01.wham_vcf]),
       sample_id=sample_id,
@@ -580,7 +583,7 @@ workflow GATKSVPipelineClinical {
       sv_base_mini_docker=sv_base_mini_docker,
       runtime_attr_override=runtime_attr_filter_vcf_by_id
   }
-  call ClinicalFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterDepth {
+  call SingleSampleFiltering.FilterVcfBySampleGenotypeAndAddEvidenceAnnotation as FilterDepth {
     input :
       vcf_gz=Module01.depth_vcf,
       sample_id=sample_id,
@@ -598,7 +601,7 @@ workflow GATKSVPipelineClinical {
       runtime_attr_override=runtime_attr_merge_pesr_vcfs
   }
 
-  call ClinicalFiltering.FilterLargePESRCallsWithoutRawDepthSupport as FilterLargePESRCallsWithoutRawDepthSupport {
+  call SingleSampleFiltering.FilterLargePESRCallsWithoutRawDepthSupport as FilterLargePESRCallsWithoutRawDepthSupport {
     input:
       pesr_vcf=MergePesrVcfs.merged_pesr_vcf,
       raw_dels=Module00c.merged_dels,
@@ -630,6 +633,8 @@ workflow GATKSVPipelineClinical {
       samples = SamplesList.samples_file,
       male_samples = SamplesList.male_samples,
       female_samples = SamplesList.female_samples,
+      run_common = false,
+      tabix_retries = tabix_retries,
       sv_base_mini_docker = sv_base_mini_docker,
       linux_docker = linux_docker,
       sv_pipeline_docker = sv_pipeline_docker,
@@ -648,7 +653,7 @@ workflow GATKSVPipelineClinical {
       sv_pipeline_docker=sv_pipeline_docker
   }
 
-  call ClinicalFiltering.RewriteSRCoords as RewriteSRCoords {
+  call SingleSampleFiltering.RewriteSRCoords as RewriteSRCoords {
     input:
       vcf = FilterLargePESRCallsWithoutRawDepthSupport.out,
       metrics = AggregateTests.metrics,
@@ -680,7 +685,6 @@ workflow GATKSVPipelineClinical {
       SR_metrics=SR_metrics,
       PE_metrics=PE_metrics,
       bin_exclude=bin_exclude,
-      bin_exclude_idx=bin_exclude_idx,
       sv_base_mini_docker=sv_base_mini_docker,
       sv_pipeline_docker=sv_pipeline_docker,
       sv_pipeline_rdtest_docker=sv_pipeline_rdtest_docker,
@@ -705,156 +709,50 @@ workflow GATKSVPipelineClinical {
       runtime_attr_concat_vcfs=runtime_attr_concat_vcfs
   }
 
-  call ClinicalFiltering.ConvertCNVsWithoutDepthSupportToBNDs as ConvertCNVsWithoutDepthSupportToBNDs {
+  call SingleSampleFiltering.ConvertCNVsWithoutDepthSupportToBNDs as ConvertCNVsWithoutDepthSupportToBNDs {
     input:
       genotyped_pesr_vcf=Module04.genotyped_pesr_vcf,
       allosome_file=allosome_file,
       merged_famfile=combined_ped_file,
-      clinical_sample=sample_id,
+      case_sample=sample_id,
       sv_pipeline_docker=sv_pipeline_docker
-  }
-
-  call utils.StringArrayToListFile as FamFileListFile {
-    input:
-      strings=[combined_ped_file],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as PesrListFile {
-    input:
-      strings=[ConvertCNVsWithoutDepthSupportToBNDs.out_vcf],
-      sv_base_mini_docker=sv_base_mini_docker
-
-  }
-
-  call utils.StringArrayToListFile as PesrIdxListFile {
-    input:
-      strings=[ConvertCNVsWithoutDepthSupportToBNDs.out_vcf_idx],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as DepthListFile {
-    input:
-      strings=[Module04.genotyped_depth_vcf],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as DepthIdxListFile {
-    input:
-      strings=[Module04.genotyped_depth_vcf_index],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as MergedPeListFile {
-    input:
-      strings=[Module00c.merged_PE],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as MergedPeIdxListFile {
-    input:
-      strings=[Module00c.merged_PE_index],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as MergedBincovListFile {
-    input:
-      strings=[Module00c.merged_bincov],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as MergedBincovIdxListFile {
-    input:
-      strings=[Module00c.merged_bincov_index],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as MergedBatchesList {
-    input:
-      strings=[batch],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as DepthSepcutoffListFile {
-    input:
-      strings=[genotype_depth_depth_sepcutoff],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as MedianCovListFile {
-    input:
-      strings=[Module00c.median_cov],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as SamplesListListFile {
-    input:
-      strings=[SamplesList.samples_file],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as SrBothsidePassListListFile {
-    input:
-      strings=[Module04.sr_bothside_pass],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as SrBothsideFailListListFile {
-    input:
-      strings=[Module04.sr_background_fail],
-      sv_base_mini_docker=sv_base_mini_docker
-  }
-
-  call utils.StringArrayToListFile as CutoffsListFile {
-    input:
-      strings=[cutoffs],
-      sv_base_mini_docker=sv_base_mini_docker
   }
 
   call m0506.Module05_06 as Module0506 {
     input:
-      raw_sr_bothside_pass=SrBothsidePassListListFile.list_file,
-      raw_sr_background_fail=SrBothsideFailListListFile.list_file,
+      raw_sr_bothside_pass_files=[Module04.sr_bothside_pass],
+      raw_sr_background_fail_files=[Module04.sr_background_fail],
       min_sr_background_fail_batches=clean_vcf_min_sr_background_fail_batches,
-      fam_file_list=FamFileListFile.list_file,
-      pesr_vcf_list=PesrListFile.list_file,
-      pesr_vcf_idx_list=PesrIdxListFile.list_file,
-      depth_vcf_list=DepthListFile.list_file,
-      depth_vcf_idx_list=DepthIdxListFile.list_file,
-      samples = flatten([[sample_id], read_lines(ref_panel_outliers_excluded_list)]),
+      ped_files=[combined_ped_file],
+      pesr_vcfs=[ConvertCNVsWithoutDepthSupportToBNDs.out_vcf],
+      depth_vcfs=[Module04.genotyped_depth_vcf],
       contig_list=primary_contigs_fai,
       ref_build=ref_build,
 
       max_shards_per_chrom=clean_vcf_max_shards_per_chrom,
       min_variants_per_shard=clean_vcf_min_variants_per_shard,
       cytobands=cytobands,
-      cytobands_idx=cytobands_idx,
 
       bin_exclude=bin_exclude,
 
-      discfile_list=MergedPeListFile.list_file,
-      discfile_idx_list=MergedPeIdxListFile.list_file,
-      bincov_list=MergedBincovListFile.list_file,
-      bincov_idx_list=MergedBincovIdxListFile.list_file,
+      disc_files=[Module00c.merged_PE],
+      bincov_files=[Module00c.merged_bincov],
 
       mei_bed=mei_bed,
       pe_blacklist=pe_blacklist,
-      pe_blacklist_idx=pe_blacklist_idx,
       depth_blacklist=depth_blacklist,
-      depth_blacklist_idx=depth_blacklist_idx,
       empty_file=empty_file,
 
-      prefix=batch,
-      trios_fam_file=ref_ped_file,
+      cohort_name=batch,
       sanders_2015_tarball=Sanders_2015_tarball,
       collins_2017_tarball=Collins_2017_tarball,
       werling_2018_tarball=Werling_2018_tarball,
 
-      rf_cutoffs=CutoffsListFile.list_file,
-      batches_list=MergedBatchesList.list_file,
-      depth_gt_rd_sep_list=DepthSepcutoffListFile.list_file,
-      medianfile_list=MedianCovListFile.list_file,
-      sampleslist_list=SamplesListListFile.list_file,
+      rf_cutoff_files=[cutoffs],
+      batches=[batch],
+      depth_gt_rd_sep_files=[genotype_depth_depth_sepcutoff],
+      median_coverage_files=[Module00c.median_cov],
+      samplelist_files=[SamplesList.samples_file],
 
       max_shards_per_chrom_clean_vcf_step1=clean_vcf_max_shards_per_chrom_clean_vcf_step1,
       min_records_per_shard_clean_vcf_step1=clean_vcf_min_records_per_shard_clean_vcf_step1,
@@ -882,7 +780,7 @@ workflow GATKSVPipelineClinical {
 
   }
 
-  call ClinicalFiltering.FilterVcfForShortDepthCalls as FilterVcfDepthLt5kb {
+  call SingleSampleFiltering.FilterVcfForShortDepthCalls as FilterVcfDepthLt5kb {
     input:
       vcf_gz=Module0506.cleaned_vcf,
       min_length=5000,
@@ -890,7 +788,7 @@ workflow GATKSVPipelineClinical {
       sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call ClinicalFiltering.GetUniqueNonGenotypedDepthCalls as GetUniqueNonGenotypedDepthCalls {
+  call SingleSampleFiltering.GetUniqueNonGenotypedDepthCalls as GetUniqueNonGenotypedDepthCalls {
     input:
       vcf_gz=Module0506.final_04b_vcf,
       sample_id=sample_id,
@@ -899,50 +797,50 @@ workflow GATKSVPipelineClinical {
       sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call ClinicalFiltering.FilterVcfForCaseSampleGenotype as FilterVcfForCaseSampleGenotype {
+  call SingleSampleFiltering.FilterVcfForCaseSampleGenotype as FilterVcfForCaseSampleGenotype {
     input:
       vcf_gz=FilterVcfDepthLt5kb.out,
       sample_id=sample_id,
       sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call ClinicalFiltering.FilterVcfWithReferencePanelCalls as FilterVcfWithReferencePanelCalls {
+  call SingleSampleFiltering.FilterVcfWithReferencePanelCalls as FilterVcfWithReferencePanelCalls {
     input:
-      clinical_vcf=FilterVcfForCaseSampleGenotype.out,
+      single_sample_vcf=FilterVcfForCaseSampleGenotype.out,
       cohort_vcf=ref_panel_vcf,
       case_sample_id=sample_id,
       max_ref_panel_carrier_freq=max_ref_panel_carrier_freq,
       sv_pipeline_docker=sv_pipeline_docker
   }
 
-  call ClinicalFiltering.ResetFilter as ResetHighSRBackgroundFilter {
+  call SingleSampleFiltering.ResetFilter as ResetHighSRBackgroundFilter {
     input:
-      clinical_vcf=FilterVcfWithReferencePanelCalls.out,
-      clinical_vcf_idx=FilterVcfWithReferencePanelCalls.out_idx,
+      single_sample_vcf=FilterVcfWithReferencePanelCalls.out,
+      single_sample_vcf_idx=FilterVcfWithReferencePanelCalls.out_idx,
       filter_to_reset="HIGH_SR_BACKGROUND",
       info_header_line='##INFO=<ID=HIGH_SR_BACKGROUND,Number=0,Type=Flag,Description="Sites with high split read background">',
       sv_base_mini_docker=sv_base_mini_docker
   }
 
-  call ClinicalFiltering.ResetFilter as ResetBothsidesSupportFilter {
+  call SingleSampleFiltering.ResetFilter as ResetBothsidesSupportFilter {
       input:
-        clinical_vcf=ResetHighSRBackgroundFilter.out,
-        clinical_vcf_idx=ResetHighSRBackgroundFilter.out_idx,
+        single_sample_vcf=ResetHighSRBackgroundFilter.out,
+        single_sample_vcf_idx=ResetHighSRBackgroundFilter.out_idx,
         filter_to_reset="BOTHSIDES_SUPPORT",
         info_header_line='##INFO=<ID=BOTHSIDES_SUPPORT,Number=0,Type=Flag,Description="Sites with split read support at both breakpoints">',
         sv_base_mini_docker=sv_base_mini_docker
     }
 
-  call ClinicalFiltering.FinalVCFCleanup as FinalVCFCleanup {
+  call SingleSampleFiltering.FinalVCFCleanup as FinalVCFCleanup {
     input:
-      clinical_vcf=ResetBothsidesSupportFilter.out,
-      clinical_vcf_idx=ResetBothsidesSupportFilter.out_idx,
+      single_sample_vcf=ResetBothsidesSupportFilter.out,
+      single_sample_vcf_idx=ResetBothsidesSupportFilter.out_idx,
       ref_fasta=reference_fasta,
       ref_fasta_idx=reference_index,
       sv_pipeline_docker=sv_pipeline_docker
   }
 
-  call ClinicalMetrics.ClinicalMetrics {
+  call SingleSampleMetrics.SingleSampleMetrics {
     input:
       name = batch,
       ref_samples = ref_samples,
@@ -961,10 +859,10 @@ workflow GATKSVPipelineClinical {
       sv_pipeline_base_docker = sv_pipeline_base_docker
   }
 
-  call utils.RunQC as ClinicalQC {
+  call utils.RunQC as SingleSampleQC {
     input:
       name = batch,
-      metrics = ClinicalMetrics.metrics_file,
+      metrics = SingleSampleMetrics.metrics_file,
       qc_definitions = qc_definitions,
       sv_pipeline_base_docker = sv_pipeline_base_docker
   }
@@ -974,8 +872,8 @@ workflow GATKSVPipelineClinical {
     File final_vcf_idx = FinalVCFCleanup.out_idx
     File ploidy_matrix = select_first([Module00c.ploidy_matrix])
     File ploidy_plots = select_first([Module00c.ploidy_plots])
-    File metrics_file = ClinicalMetrics.metrics_file
-    File qc_file = ClinicalQC.out
+    File metrics_file = SingleSampleMetrics.metrics_file
+    File qc_file = SingleSampleQC.out
 
     # These files contain any depth based calls made in the case sample that did not pass genotyping
     # in the case sample and do not match a depth-based call from the reference panel.

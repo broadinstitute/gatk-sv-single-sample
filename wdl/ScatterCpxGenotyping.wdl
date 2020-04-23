@@ -9,8 +9,8 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "05_06_genotype_cpx_cnvs.wdl" as GenotypeCpx
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "GenotypeCpxCnvs.wdl" as GenotypeCpx
+import "Tasks0506.wdl" as MiniTasks
 
 # Workflow to perform depth-based genotyping for a single vcf shard scattered 
 # across batches on predicted CPX CNVs from 04b
@@ -20,12 +20,17 @@ workflow ScatterCpxGenotyping {
     File vcf
     Int n_master_vcf_shards
     Int n_master_min_vars_per_vcf_shard
-    File gt_input_files
+    Array[String] batches
+    Array[File] coverage_files
+    Array[File] rd_depth_sep_cutoff_files
+    Array[File] samplelist_files
+    Array[File] ped_files
+    Array[File] median_coverage_files
     Int n_per_split_small
     Int n_per_split_large
     Int n_rd_test_bins
     String prefix
-    File fam_file
+    File merged_ped_file
     String contig
 
     String sv_base_mini_docker
@@ -65,12 +70,17 @@ workflow ScatterCpxGenotyping {
       input:
         bin_exclude=bin_exclude,
         vcf=shard,
-        gt_input_files=gt_input_files,
+        batches=batches,
+        coverage_files=coverage_files,
+        rd_depth_sep_cutoff_files=rd_depth_sep_cutoff_files,
+        samplelist_files=samplelist_files,
+        ped_files=ped_files,
+        median_coverage_files=median_coverage_files,
         n_per_split_large=n_per_split_large,
         n_per_split_small=n_per_split_small,
         n_rd_test_bins=n_rd_test_bins,
         prefix=prefix,
-        fam_file=fam_file,
+        merged_ped_file=merged_ped_file,
         contig=contig,
         sv_base_mini_docker=sv_base_mini_docker,
         sv_pipeline_docker=sv_pipeline_docker,

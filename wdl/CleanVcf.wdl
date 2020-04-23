@@ -6,15 +6,15 @@ version 1.0
 # based on snapshot 20
 # https://portal.firecloud.org/#methods/Talkowski-SV/05_CleanVCF3/20/wdl
 
-import "05_06_structs.wdl"
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "Structs.wdl"
+import "Tasks0506.wdl" as MiniTasks
 
 workflow CleanVcf {
   input {
     File vcf
     String contig
     File background_list
-    File fam_file
+    File ped_file
     String prefix
     Int max_shards_per_chrom_step1
     File bothsides_pass_list
@@ -63,7 +63,7 @@ workflow CleanVcf {
       input:
         vcf=vcf_shard,
         background_list=background_list,
-        fam_file=fam_file,
+        ped_file=ped_file,
         sv_pipeline_docker=sv_pipeline_docker,
         bothsides_pass_list=bothsides_pass_list,
         runtime_attr_override=runtime_override_clean_vcf_1a
@@ -99,7 +99,7 @@ workflow CleanVcf {
       whole_file=CleanVcf1a.whitelist[0],
       lines_per_shard=samples_per_step2_shard,
       shard_prefix="whiteblack.",
-      sv_base_mini_docker=sv_base_mini_docker,
+      sv_pipeline_docker=sv_pipeline_docker,
       runtime_attr_override=runtime_override_split_whitelist
   }
 
@@ -159,7 +159,7 @@ workflow CleanVcf {
     input:
       revise_vcf_lines=CombineRevised4.outfile,
       normal_revise_vcf=CleanVcf1b.normal,
-      fam_file=fam_file,
+      ped_file=ped_file,
       sex_chr_revise=CombineStep1SexChrRevisions.outfile,
       multi_ids=CombineMultiIds4.outfile,
       outlier_samples_list=outlier_samples_list,
@@ -205,7 +205,7 @@ task CleanVcf1a {
   input {
     File vcf
     File background_list
-    File fam_file
+    File ped_file
     String sv_pipeline_docker
     File bothsides_pass_list
     RuntimeAttr? runtime_attr_override
@@ -213,7 +213,7 @@ task CleanVcf1a {
 
   # generally assume working disk size is ~2 * inputs, and outputs are ~2 *inputs, and inputs are not removed
   # generally assume working memory is ~3 * inputs
-  Float shard_size = size([vcf, background_list, fam_file], "GB")
+  Float shard_size = size([vcf, background_list, ped_file], "GB")
   Float base_disk_gb = 10.0
   Float base_mem_gb = 2.0
   Float input_mem_scale = 3.0
@@ -240,7 +240,7 @@ task CleanVcf1a {
   command <<<
     set -eu -o pipefail
     
-    /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1.sh ~{vcf} ~{background_list} ~{fam_file}
+    /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part1.sh ~{vcf} ~{background_list} ~{ped_file}
     /opt/sv-pipeline/04_variant_resolution/scripts/add_bothsides_support_filter.py \
       --bgzip \
       --outfile int.w_bothsides.vcf.gz \
@@ -454,7 +454,7 @@ task CleanVcf5 {
   input {
     File revise_vcf_lines
     File normal_revise_vcf
-    File fam_file
+    File ped_file
     File sex_chr_revise
     File multi_ids
     File? outlier_samples_list
@@ -465,7 +465,7 @@ task CleanVcf5 {
   # generally assume working disk size is ~2 * inputs, and outputs are ~2 *inputs, and inputs are not removed
   # generally assume working memory is ~3 * inputs
   Float input_size = size(
-    select_all([revise_vcf_lines, normal_revise_vcf, fam_file, sex_chr_revise, multi_ids, outlier_samples_list]),
+    select_all([revise_vcf_lines, normal_revise_vcf, ped_file, sex_chr_revise, multi_ids, outlier_samples_list]),
     "GB"
   )
   Float base_disk_gb = 10.0
@@ -499,7 +499,7 @@ task CleanVcf5 {
     /opt/sv-pipeline/04_variant_resolution/scripts/clean_vcf_part5.sh \
       ~{revise_vcf_lines} \
       ~{normal_revise_vcf} \
-      ~{fam_file} \
+      ~{ped_file} \
       ~{sex_chr_revise} \
       ~{multi_ids} \
       outliers.txt

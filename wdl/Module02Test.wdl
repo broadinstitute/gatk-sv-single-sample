@@ -19,7 +19,8 @@ workflow Module02Test {
   call metrics.Module02Metrics {
     input:
       name = test_name,
-      metrics = Module02.metrics
+      metrics = Module02.metrics,
+      metrics_common = Module02.metrics_common
   }
 
   call utils.PlotMetrics {

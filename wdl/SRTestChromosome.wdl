@@ -26,6 +26,9 @@ workflow SRTestChromosome {
     File female_samples
     File samples
     Boolean allosome
+    Boolean run_common
+    Int? common_cnv_size_cutoff
+    Int tabix_retries
 
     String sv_pipeline_docker
     String linux_docker
@@ -59,7 +62,9 @@ workflow SRTestChromosome {
           medianfile = medianfile,
           splitfile_idx = splitfile_idx,
           whitelist = female_samples,
+          common_model = false,
           prefix = basename(split),
+          tabix_retries = tabix_retries,
           sv_pipeline_docker = sv_pipeline_docker,
           runtime_attr_override = runtime_attr_srtest
       }
@@ -71,7 +76,9 @@ workflow SRTestChromosome {
           medianfile = medianfile,
           splitfile_idx = splitfile_idx,
           whitelist = male_samples,
+          common_model = false,
           prefix = basename(split),
+          tabix_retries = tabix_retries,
           sv_pipeline_docker = sv_pipeline_docker,
           runtime_attr_override = runtime_attr_srtest
       }
@@ -95,25 +102,63 @@ workflow SRTestChromosome {
           medianfile = medianfile,
           splitfile_idx = splitfile_idx,
           whitelist = samples,
+          common_model = false,
           prefix = basename(split),
+          tabix_retries = tabix_retries,
           sv_pipeline_docker = sv_pipeline_docker,
           runtime_attr_override = runtime_attr_srtest
+      }
+
+      if (run_common) {
+        call tasks02.SplitCommonVCF as SplitCommonVCF {
+          input:
+            vcf = split,
+            cnv_size_cutoff = select_first([common_cnv_size_cutoff]),
+            sv_pipeline_docker = sv_pipeline_docker,
+            runtime_attr_override = runtime_attr_split_vcf
+        }
+
+        call SRTest as SRTestAutosomeCommon {
+          input:
+            vcf = SplitCommonVCF.common_vcf,
+            splitfile = splitfile,
+            medianfile = medianfile,
+            splitfile_idx = splitfile_idx,
+            whitelist = samples,
+            common_model = true,
+            prefix = basename(split),
+            tabix_retries = tabix_retries,
+            sv_pipeline_docker = sv_pipeline_docker,
+            runtime_attr_override = runtime_attr_srtest
+        }
       }
     }
   }
   
-  Array[File?] stats = if allosome then MergeAllosomes.merged_test else SRTestAutosome.stats
+  Array[File] unmerged_stats = if allosome then select_all(MergeAllosomes.merged_test) else select_all(SRTestAutosome.stats)
+  Array[File] unmerged_stats_common = if allosome then [] else select_all(SRTestAutosomeCommon.stats)
 
   call tasks02.MergeStats as MergeStats {
     input:
-      stats = select_all(stats),
+      stats = unmerged_stats,
       prefix = "${batch}.${algorithm}.${chrom}",
       linux_docker = linux_docker,
       runtime_attr_override = runtime_attr_merge_stats
   }
 
+  if (run_common && !allosome) {
+    call tasks02.MergeStats as MergeStatsCommon {
+      input:
+        stats = unmerged_stats_common,
+        prefix = "${batch}.${algorithm}.${chrom}.common",
+        linux_docker = linux_docker,
+        runtime_attr_override = runtime_attr_merge_stats
+    }
+  }
+
   output {
     File stats = MergeStats.merged_stats
+    File? stats_common = MergeStatsCommon.merged_stats
   }
 }
 
@@ -124,10 +169,14 @@ task SRTest {
     File medianfile
     File splitfile_idx
     File whitelist
+    Boolean common_model
     String prefix
+    Int tabix_retries
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
+
+  String common_arg = if common_model then "--common" else ""
 
   parameter_meta {
     splitfile: {
@@ -137,8 +186,8 @@ task SRTest {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 3.75, 
-    disk_gb: 10,
+    mem_gb: 3.75,
+    disk_gb: 50,
     boot_disk_gb: 10,
     preemptible_tries: 3,
     max_retries: 1
@@ -156,10 +205,25 @@ task SRTest {
     awk -v OFS="\t" '{if ($3-250>0){print $1,$3-250,$3+250}else{print $1,0,$3+250}}' test.bed  >> region.bed
     sort -k1,1 -k2,2n region.bed > region.sorted.bed
     bedtools merge -d 16384 -i region.sorted.bed > region.merged.bed
-    GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` \
-      tabix -R region.merged.bed ~{splitfile} | bgzip -c > SR.txt.gz
+
+    # Temporary workaround for corrupted tabix downloads
+    x=0
+    while [ $x -lt ~{tabix_retries} ]
+    do
+      # Download twice
+      GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` tabix -R region.merged.bed ~{splitfile} | bgzip -c > SR_1.txt.gz
+      GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` tabix -R region.merged.bed ~{splitfile} | bgzip -c > SR_2.txt.gz
+      # Done if the downloads were identical, otherwise retry
+      cmp --silent SR_1.txt.gz SR_2.txt.gz && break
+      x=$(( $x + 1))
+    done
+    echo "SR-tabix retry:" $x
+    cmp --silent SR_1.txt.gz SR_2.txt.gz || exit 1
+
+    mv SR_1.txt.gz SR.txt.gz
     tabix -b 2 -e 2 SR.txt.gz
-    svtk sr-test -w 50 --log --index SR.txt.gz.tbi --medianfile ~{medianfile} --samples ~{whitelist} ~{vcf} SR.txt.gz ~{prefix}.stats
+
+    svtk sr-test -w 50 --log --index SR.txt.gz.tbi ~{common_arg} --medianfile ~{medianfile} --samples ~{whitelist} ~{vcf} SR.txt.gz ~{prefix}.stats
   
   >>>
   runtime {
@@ -171,5 +235,6 @@ task SRTest {
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
-
 }
+
+

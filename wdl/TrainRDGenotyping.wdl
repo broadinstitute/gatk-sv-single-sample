@@ -14,15 +14,14 @@ import "Tasks04.wdl" as tasks04
 workflow TrainRDGenotyping {
   input {
     File bin_exclude
-    File bin_exclude_idx
     File vcf                # VCF to genotype
-    File coveragefile     # batch coverage file
+    File coveragefile       # batch coverage file
     File medianfile         # batch median file
     File famfile            # batch famfile
     File rf_cutoffs         # Random forest cutoffs
     File seed_cutoffs
     Array[String] samples   # List of samples in batch
-    String prefix           # batch/algorithm ID to use in output files
+    String prefix           # prefix use in output files
     Int n_bins              # number of RdTest bins
     Int n_per_split         # number of variants per RdTest split
     String reference_build  #hg19 or hg38
@@ -38,6 +37,8 @@ workflow TrainRDGenotyping {
     RuntimeAttr? runtime_attr_rdtest_genotype
     RuntimeAttr? runtime_attr_merge_genotypes
   }
+
+  File bin_exclude_idx = bin_exclude + ".tbi"
 
   call MakeTrainingBed {
     input:
@@ -58,7 +59,7 @@ workflow TrainRDGenotyping {
       samples = samples,
       gt_cutoffs = seed_cutoffs,
       n_bins = n_bins,
-      prefix = "train",
+      prefix = prefix,
       generate_melted_genotypes = false,
       sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
       runtime_attr_override = runtime_attr_genotype_train
@@ -68,7 +69,7 @@ workflow TrainRDGenotyping {
     input:
       copy_states = GenotypeTrain.copy_states,
       max_copystate = 4,
-      prefix = "train",
+      prefix = prefix,
       sv_pipeline_rdtest_docker = sv_pipeline_rdtest_docker,
       runtime_attr_override = runtime_attr_generate_cutoff
   }
@@ -77,6 +78,7 @@ workflow TrainRDGenotyping {
     input:
       rf_cutoffs = rf_cutoffs,
       gt_cutoffs = GenerateCutoff.cutoffs,
+      prefix = prefix,
       sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_update_cutoff
   }
@@ -196,6 +198,7 @@ task UpdateCutoff {
   input {
     File rf_cutoffs
     File gt_cutoffs
+    String prefix
     String sv_base_mini_docker
     RuntimeAttr? runtime_attr_override
   }
@@ -211,16 +214,16 @@ task UpdateCutoff {
   RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
 
   output {
-    File pesr_sepcutoff = "pesr_sepcutoff.txt"
-    File depth_sepcutoff = "depth_sepcutoff.txt"
+    File pesr_sepcutoff = "~{prefix}.pesr_sepcutoff.txt"
+    File depth_sepcutoff = "~{prefix}.depth_sepcutoff.txt"
   }
   command <<<
 
     set -euo pipefail
     sep=$( awk -F'\t' '{if ($1=="PESR" && $6==1000 && $5=="RD_Median_Separation") print $2}' ~{rf_cutoffs});
-    cat ~{gt_cutoffs} | awk -v var=$sep '{if ($1=="1" && $4>1-var) $4=1-var; else if ($1=="2" && $4<1+var) $4=1+var; print}' | tr ' ' '\t' > pesr_sepcutoff.txt;
+    cat ~{gt_cutoffs} | awk -v var=$sep '{if ($1=="1" && $4>1-var) $4=1-var; else if ($1=="2" && $4<1+var) $4=1+var; print}' | tr ' ' '\t' > ~{prefix}.pesr_sepcutoff.txt;
     sep=$( awk -F'\t' '{if ($1=="Depth" && $5=="RD_Median_Separation") print $2}' ~{rf_cutoffs} | sort -nr | head -n 1);
-    cat ~{gt_cutoffs} | awk -v var=$sep '{if ($1=="1" && $4>1-var) $4=1-var; else if ($1=="2" && $4<1+var) $4=1+var; print}'|tr ' ' '\t' > depth_sepcutoff.txt;
+    cat ~{gt_cutoffs} | awk -v var=$sep '{if ($1=="1" && $4>1-var) $4=1-var; else if ($1=="2" && $4<1+var) $4=1+var; print}'|tr ' ' '\t' > ~{prefix}.depth_sepcutoff.txt;
   
   >>>
   runtime {

@@ -151,7 +151,7 @@ task SRMetrics {
     Array[String] samples
     String sv_pipeline_base_docker
     Float mem_gib = 3.75
-    Int disk_gb = 10
+    Int disk_gb = 25
     Int preemptible_attempts = 3
   }
 
@@ -244,7 +244,7 @@ task BincovMetrics {
     File bincov_matrix
     Array[String] samples
     String sv_pipeline_base_docker
-    Float mem_gib = 3.75
+    Float mem_gib = 15
     Int disk_gb = 10
     Int preemptible_attempts = 3
   }
@@ -380,6 +380,7 @@ task MetricsFileMetrics {
   input {
     File metrics_file
     File contig_list
+    Boolean common
     String prefix
     String sv_pipeline_base_docker
     Float mem_gib = 3.75
@@ -387,12 +388,14 @@ task MetricsFileMetrics {
     Int preemptible_attempts = 3
   }
 
+  String common_arg = if common then "--common" else ""
+
   output {
     File out = "~{prefix}.metrics.tsv"
   }
   command <<<
 
-    svtest metrics-file ~{metrics_file} ~{contig_list} > ~{prefix}.metrics.tsv
+    svtest metrics-file ~{metrics_file} ~{contig_list} ~{common_arg} > ~{prefix}.metrics.tsv
 
   >>>
   runtime {

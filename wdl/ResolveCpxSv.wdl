@@ -8,26 +8,21 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "Tasks0506.wdl" as MiniTasks
 
 #Resolve complex SV for a single chromosome
 workflow ResolveComplexSv {
   input {
     File vcf
-    File vcf_idx
     String prefix
     String contig
     Int max_shards_per_chrom
     Int min_variants_per_shard
     File cytobands
-    File cytobands_idx
     File mei_bed
-    File discfile_list
-    File discfile_idx_list
-    Float discfile_size_gb
+    Array[File] disc_files
+    Array[File] rf_cutoff_files
     File pe_blacklist
-    File pe_blacklist_idx
-    File rf_cutoffs
     Boolean inv_only
 
     String sv_pipeline_docker
@@ -43,9 +38,10 @@ workflow ResolveComplexSv {
     # overrides for MiniTasks
     RuntimeAttr? runtime_override_concat_resolved_per_shard
   }
-  
-  Array[String] discfiles = read_lines(discfile_list)
-  Array[File] discfile_idxs = read_lines(discfile_idx_list)
+
+  File vcf_idx = vcf + ".tbi"
+  File pe_blacklist_idx = pe_blacklist + ".tbi"
+  File cytobands_idx = cytobands + ".tbi"
 
   # Get SR count cutoff from RF metrics to use in single-ender rescan procedure
 
@@ -68,7 +64,7 @@ workflow ResolveComplexSv {
 
     call GetSeCutoff {
       input:
-        rf_cutoffs=read_lines(rf_cutoffs),
+        rf_cutoffs=rf_cutoff_files,
         sv_pipeline_docker=sv_pipeline_docker,
         runtime_attr_override=runtime_override_get_se_cutoff
     }
@@ -82,9 +78,7 @@ workflow ResolveComplexSv {
           vcf=vcf,
           VIDs_list=VID_list,
           chrom=contig,
-          discfiles=discfiles,
-          discfile_idxs=discfile_idxs,
-          discfile_size_gb=discfile_size_gb,
+          disc_files=disc_files,
           sv_pipeline_docker=sv_pipeline_docker,
           runtime_attr_override=runtime_override_resolve_prep
       }
@@ -227,8 +221,6 @@ task ShardVcfCpx {
   command <<<
     set -euo pipefail
 
-    ~{if defined(vcf_idx) then "" else "tabix -f -p vcf ~{vcf}"}
-
     SHARD_SCRIPT="shardVCF_preResolveCPX~{if inv_only then "_invOnly" else ""}_part1.sh"
     /opt/sv-pipeline/04_variant_resolution/scripts/$SHARD_SCRIPT \
       -L ~{min_variants_per_shard} \
@@ -249,27 +241,31 @@ task ResolvePrep {
     File vcf
     File VIDs_list
     String chrom
-    Array[String] discfiles
-    Array[File] discfile_idxs
-    Float discfile_size_gb
+    Array[File] disc_files
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
 
-  # sections of discfiles are remote-tabixed in, but the every operation in this task is record-by-record except
+  parameter_meta {
+    disc_files: {
+      localization_optional: true
+    }
+  }
+
+  # sections of disc_files are remote-tabixed in, but the every operation in this task is record-by-record except
   # bedtools merge, which should only need to keep a few records in memory at a time.
   # assuming memory overhead is fixed
-  # assuming disk overhead is input size (accounting for compression) + sum(size of discfiles)
+  # assuming disk overhead is input size (accounting for compression) + sum(size of disc_files)
   #  (this is an over-estimate because we only take chunks overlapping VIDs from vcf, but the disk files are not *THAT*
   #   big and disk is cheap)
   Float compressed_input_size = size(vcf, "GiB")
-  Float uncompressed_input_size = size([VIDs_list, discfile_idxs], "GiB")
+  Float uncompressed_input_size = size([VIDs_list], "GiB")
   Float compression_factor = 5.0
-  Float base_disk_gb = 5.0
+  Float base_disk_gb = 10.0
   Float base_mem_gb = 2.0
   RuntimeAttr runtime_default = object {
     mem_gb: base_mem_gb,
-    disk_gb: ceil(base_disk_gb + uncompressed_input_size + compression_factor * compressed_input_size + discfile_size_gb),
+    disk_gb: ceil(base_disk_gb + uncompressed_input_size + compression_factor * compressed_input_size),
     cpu_cores: 1,
     preemptible_tries: 3,
     max_retries: 1,
@@ -355,7 +351,7 @@ task ResolvePrep {
           | awk '{ if ($1==$4 && $3==$6) print }' \
           | bgzip -c \
           > $SLICE.txt.gz
-      done < ~{write_lines(discfiles)}
+      done < ~{write_lines(disc_files)}
     
       #Fourth, merge PE files and add one artificial pair corresponding to the chromosome of interest
       #This makes it so that svtk doesn't break downstream

@@ -17,7 +17,7 @@ import "MedianCov.wdl" as mc
 import "PESRPreprocessing.wdl" as pp
 import "GermlineCNVCase.wdl" as gcnv
 import "PloidyEstimation.wdl" as pe
-import "tinyresolve.wdl" as tiny
+import "TinyResolve.wdl" as tiny
 
 # Batch-level workflow:
 #   - Merge sample evidence data into a single batch
@@ -43,9 +43,8 @@ workflow Module00c {
     # PE/SR/BAF/bincov files
     Array[File] counts
     File? ref_panel_bincov_matrix
-    Array[File]? BAF_files         # Required for MatrixQC
+    Array[File?]? BAF_files         # Required for MatrixQC
     Array[File]+ PE_files
-    Array[File]+ PE_files_idx
     Array[File]? ref_panel_PE_files
     Array[File]+ SR_files
     Array[File]? ref_panel_SR_files
@@ -117,7 +116,6 @@ workflow Module00c {
 
     # Resolve files
     File cytoband
-    File cytoband_idx
     File mei_bed
     # QC files
     Int matrix_qc_distance
@@ -139,8 +137,15 @@ workflow Module00c {
     Int? evidence_merging_SR_size_mb
     Int? evidence_merging_bincov_size_mb
     Int? evidence_merging_disk_overhead_gb            # Fixed extra disk
-    RuntimeAttr? evidence_merging_pesr_runtime_attr   # Disk space ignored, use evidence_merging_<BAF/PE/SR>_size_mb
-    RuntimeAttr? evidence_merging_bincov_runtime_attr # Disk space ignored, use evidence_merging_bincov_size_mb
+
+    RuntimeAttr? evidence_merging_bincov_runtime_attr
+    RuntimeAttr? runtime_attr_shard_baf
+    RuntimeAttr? runtime_attr_merge_baf
+    RuntimeAttr? runtime_attr_shard_pe
+    RuntimeAttr? runtime_attr_merge_pe
+    RuntimeAttr? runtime_attr_shard_sr
+    RuntimeAttr? runtime_attr_merge_sr
+    RuntimeAttr? set_sample_runtime_attr
 
     RuntimeAttr? cnmops_sample10_runtime_attr   # Memory ignored if cnmops_mem_gb_override_sample10 given
     RuntimeAttr? cnmops_sample3_runtime_attr    # Memory ignored if cnmops_mem_gb_override_sample3 given
@@ -208,17 +213,25 @@ workflow Module00c {
 
   call bem.EvidenceMerging as EvidenceMerging {
     input:
+      samples = all_samples,
       BAF_files = BAF_files,
       PE_files = all_PE_files,
       SR_files = all_SR_files,
       inclusion_bed = inclusion_bed,
+      genome_file = genome_file,
       batch = batch,
       BAF_size_mb = evidence_merging_BAF_size_mb,
       PE_size_mb = evidence_merging_PE_size_mb,
       SR_size_mb = evidence_merging_SR_size_mb,
       disk_overhead_gb = evidence_merging_disk_overhead_gb,
       sv_base_mini_docker = sv_base_mini_docker,
-      runtime_attr_pesr = evidence_merging_pesr_runtime_attr
+      runtime_attr_set_sample = set_sample_runtime_attr,
+      runtime_attr_shard_baf = runtime_attr_shard_baf,
+      runtime_attr_merge_baf = runtime_attr_merge_baf,
+      runtime_attr_shard_pe = runtime_attr_shard_pe,
+      runtime_attr_merge_pe = runtime_attr_merge_pe,
+      runtime_attr_shard_sr = runtime_attr_shard_sr,
+      runtime_attr_merge_sr = runtime_attr_merge_sr
   }
 
   call cnmops.CNMOPS as CNMOPS {
@@ -376,9 +389,7 @@ workflow Module00c {
           samples = samples,
           manta_vcfs = select_first([PreprocessPESR.std_manta_vcf]),
           cytoband=cytoband,
-          cytoband_idx=cytoband_idx,
           discfile=PE_files,
-          discfile_idx=PE_files_idx,
           mei_bed=mei_bed,
           sv_pipeline_docker = sv_pipeline_docker,
           runtime_attr = preprocess_calls_runtime_attr

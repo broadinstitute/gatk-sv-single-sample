@@ -21,6 +21,7 @@ workflow Module03 {
     File? depth_vcf
     File ped_file
     File evidence_metrics
+    File evidence_metrics_common
     Int outlier_cutoff_nIQR
 
     String sv_pipeline_docker
@@ -28,6 +29,7 @@ workflow Module03 {
     String linux_docker
 
     RuntimeAttr? runtime_attr_adjudicate
+    RuntimeAttr? runtime_attr_rewrite_scores
     RuntimeAttr? runtime_attr_filter_annotate_vcf
     RuntimeAttr? runtime_attr_update_ped
     RuntimeAttr? runtime_attr_merge_pesr_vcfs
@@ -50,6 +52,17 @@ workflow Module03 {
       runtime_attr_override = runtime_attr_adjudicate
   }
 
+  call RewriteScores {
+    input:
+      metrics = evidence_metrics_common,
+      cutoffs = AdjudicateSV.cutoffs,
+      scores = AdjudicateSV.scores,
+      batch = batch,
+      sv_pipeline_docker = sv_pipeline_docker,
+      runtime_attr_override = runtime_attr_rewrite_scores
+  }
+
+
   scatter (i in range(num_algorithms)) {
     if (defined(vcfs_array[i])) {
       call FilterAnnotateVcf {
@@ -57,7 +70,7 @@ workflow Module03 {
           vcf = select_first([vcfs_array[i]]),
           metrics = evidence_metrics,
           prefix = "${batch}.${algorithms[i]}",
-          scores = AdjudicateSV.scores,
+          scores = RewriteScores.updated_scores,
           cutoffs = AdjudicateSV.cutoffs,
           sv_pipeline_docker = sv_pipeline_docker,
           runtime_attr_override = runtime_attr_filter_annotate_vcf
@@ -109,7 +122,7 @@ workflow Module03 {
     File? filtered_depth_vcf = FilterOutlierSamples.vcfs_noOutliers[4]
     File filtered_pesr_vcf = MergePesrVcfs.merged_pesr_vcf
     File cutoffs = AdjudicateSV.cutoffs
-    File scores = AdjudicateSV.scores
+    File scores = RewriteScores.updated_scores
     File RF_intermediate_files = AdjudicateSV.RF_intermediate_files
     Array[String] outlier_samples_excluded = FilterOutlierSamples.outlier_samples_excluded
     Array[String] batch_samples_postOutlierExclusion = FilterOutlierSamples.filtered_batch_samples_list
@@ -161,7 +174,50 @@ task AdjudicateSV {
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
+}
 
+task RewriteScores {
+  input {
+    File metrics
+    File cutoffs
+    File scores
+    String batch
+    String sv_pipeline_docker
+    RuntimeAttr? runtime_attr_override
+  }
+
+  RuntimeAttr default_attr = object {
+    cpu_cores: 1,
+    mem_gb: 3.75,
+    disk_gb: 10,
+    boot_disk_gb: 10,
+    preemptible_tries: 3,
+    max_retries: 1
+  }
+  RuntimeAttr runtime_attr = select_first([runtime_attr_override, default_attr])
+
+  output {
+    File updated_scores = "${batch}.updated_scores"
+  }
+  command <<<
+
+    set -euo pipefail
+    Rscript /opt/sv-pipeline/03_variant_filtering/scripts/modify_cutoffs.R \
+      -c ~{cutoffs} \
+      -m ~{metrics} \
+      -s ~{scores}  \
+      -o ~{batch}.updated_scores
+
+  >>>
+  runtime {
+    cpu: select_first([runtime_attr.cpu_cores, default_attr.cpu_cores])
+    memory: select_first([runtime_attr.mem_gb, default_attr.mem_gb]) + " GiB"
+    disks: "local-disk " + select_first([runtime_attr.disk_gb, default_attr.disk_gb]) + " HDD"
+    bootDiskSizeGb: select_first([runtime_attr.boot_disk_gb, default_attr.boot_disk_gb])
+    docker: sv_pipeline_docker
+    preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
+    maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
+  }
 }
 
 task UpdatePedFile {
@@ -305,3 +361,4 @@ task FilterAnnotateVcf {
   }
 
 }
+

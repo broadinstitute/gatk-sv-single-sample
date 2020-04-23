@@ -26,6 +26,8 @@ workflow PETestChromosome {
     File female_samples
     File samples
     Boolean allosome
+    Int common_cnv_size_cutoff
+    Int tabix_retries
 
     String sv_base_mini_docker
     String linux_docker
@@ -60,6 +62,8 @@ workflow PETestChromosome {
           discfile_idx = discfile_idx,
           whitelist = male_samples,
           prefix = basename(split),
+          common_model = false,
+          tabix_retries = tabix_retries,
           sv_pipeline_docker = sv_pipeline_docker,
           runtime_attr_override = runtime_attr_petest
       }
@@ -72,6 +76,8 @@ workflow PETestChromosome {
           discfile_idx = discfile_idx,
           whitelist = female_samples,
           prefix = basename(split),
+          common_model = false,
+          tabix_retries = tabix_retries,
           sv_pipeline_docker = sv_pipeline_docker,
           runtime_attr_override = runtime_attr_petest
       }
@@ -95,24 +101,58 @@ workflow PETestChromosome {
           discfile_idx = discfile_idx,
           whitelist = samples,
           prefix = basename(split),
+          common_model = false,
+          tabix_retries = tabix_retries,
+          sv_pipeline_docker = sv_pipeline_docker,
+          runtime_attr_override = runtime_attr_petest
+      }
+      call tasks02.SplitCommonVCF as SplitCommonVCF {
+        input:
+          vcf = split,
+          cnv_size_cutoff = common_cnv_size_cutoff,
+          sv_pipeline_docker = sv_pipeline_docker,
+          runtime_attr_override = runtime_attr_split_vcf
+      }
+      call PETest as PETestAutosomeCommon {
+        input:
+          vcf = SplitCommonVCF.common_vcf,
+          discfile = discfile,
+          medianfile = medianfile,
+          discfile_idx = discfile_idx,
+          whitelist = samples,
+          prefix = basename(split),
+          common_model = true,
+          tabix_retries = tabix_retries,
           sv_pipeline_docker = sv_pipeline_docker,
           runtime_attr_override = runtime_attr_petest
       }
     }
   }
 
-  Array[File?] stats = if allosome then MergeAllosomes.merged_test else PETestAutosome.stats
+  Array[File] unmerged_stats = if allosome then select_all(MergeAllosomes.merged_test) else select_all(PETestAutosome.stats)
+  Array[File] unmerged_stats_common = if allosome then [] else select_all(PETestAutosomeCommon.stats)
 
   call tasks02.MergeStats as MergeStats {
     input:
-      stats = select_all(stats),
+      stats = unmerged_stats,
       prefix = "${batch}.${algorithm}.${chrom}",
       linux_docker = linux_docker,
       runtime_attr_override = runtime_attr_merge_stats
   }
 
+  if (!allosome) {
+    call tasks02.MergeStats as MergeStatsCommon {
+      input:
+        stats = unmerged_stats_common,
+        prefix = "${batch}.${algorithm}.${chrom}.common",
+        linux_docker = linux_docker,
+        runtime_attr_override = runtime_attr_merge_stats
+    }
+  }
+
   output {
     File stats = MergeStats.merged_stats
+    File? stats_common = MergeStatsCommon.merged_stats
   }
 }
 
@@ -123,12 +163,15 @@ task PETest {
     File medianfile
     File discfile_idx
     File whitelist
+    Boolean common_model
     String prefix
+    Int tabix_retries
     String sv_pipeline_docker
     RuntimeAttr? runtime_attr_override
   }
 
   Int window = 1000
+  String common_arg = if common_model then "--common" else ""
 
   parameter_meta {
     discfile: {
@@ -138,7 +181,7 @@ task PETest {
 
   RuntimeAttr default_attr = object {
     cpu_cores: 1, 
-    mem_gb: 3.75, 
+    mem_gb: 3.75,
     disk_gb: 10,
     boot_disk_gb: 10,
     preemptible_tries: 3,
@@ -157,10 +200,25 @@ task PETest {
     awk -v OFS="\t" '{if ($3-~{window}>0){print $1,$3-~{window},$3+~{window}}else{print $1,0,$3+~{window}}}' test.bed  >> region.bed
     sort -k1,1 -k2,2n region.bed > region.sorted.bed
     bedtools merge -d 16384 -i region.sorted.bed > region.merged.bed
-    GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` \
-      tabix -R region.merged.bed ~{discfile} | bgzip -c > PE.txt.gz
+
+    # Temporary workaround for corrupted tabix downloads
+    x=0
+    while [ $x -lt ~{tabix_retries} ]
+    do
+      # Download twice
+      GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` tabix -R region.merged.bed ~{discfile} | bgzip -c > PE_1.txt.gz
+      GCS_OAUTH_TOKEN=`gcloud auth application-default print-access-token` tabix -R region.merged.bed ~{discfile} | bgzip -c > PE_2.txt.gz
+      # Done if the downloads were identical, otherwise retry
+      cmp --silent PE_1.txt.gz PE_2.txt.gz && break
+      x=$(( $x + 1))
+    done
+    echo "PE-tabix retry:" $x
+    cmp --silent PE_1.txt.gz PE_2.txt.gz || exit 1
+
+    mv PE_1.txt.gz PE.txt.gz
     tabix -b 2 -e 2 PE.txt.gz
-    svtk pe-test -o ~{window} --index PE.txt.gz.tbi --medianfile ~{medianfile} --samples ~{whitelist} ~{vcf} PE.txt.gz ~{prefix}.stats
+
+    svtk pe-test -o ~{window} --index PE.txt.gz.tbi ~{common_arg} --medianfile ~{medianfile} --samples ~{whitelist} ~{vcf} PE.txt.gz ~{prefix}.stats
   
   >>>
   runtime {
@@ -173,3 +231,4 @@ task PETest {
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
   }
 }
+

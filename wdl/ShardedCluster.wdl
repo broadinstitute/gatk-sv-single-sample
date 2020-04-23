@@ -8,14 +8,13 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "05_06_structs.wdl"
-import "05_06_common_mini_tasks.wdl" as MiniTasks
+import "Structs.wdl"
+import "Tasks0506.wdl" as MiniTasks
 
 # Workflow to shard a filtered vcf & run vcfcluster (sub-sub-sub workflow)
 workflow ShardedCluster {
   input {
     File vcf
-    File? vcf_idx
     Int dist
     Float frac
     Int max_shards
@@ -25,12 +24,14 @@ workflow ShardedCluster {
     String sv_type
     Float sample_overlap
     File? blacklist
-    File? blacklist_idx
     Int sv_size
     Array[String] sv_types
 
     String sv_pipeline_docker
     String sv_base_mini_docker
+
+    # Do not use
+    File? NONE_FILE_
 
     # overrides for local tasks
     RuntimeAttr? runtime_override_shard_vcf_precluster
@@ -40,7 +41,11 @@ workflow ShardedCluster {
     # overrides for MiniTasks
     RuntimeAttr? runtime_override_concat_shards
   }
-  
+
+  File vcf_idx = vcf + ".tbi"
+  if (defined(blacklist)) {
+    File blacklist_idx = blacklist + ".tbi"
+  }
   String sv_type_prefix = prefix + "." + contig + "." + sv_type
 
   #New as of November 2, 2018: perform sharding and return list of variant IDs
@@ -102,6 +107,7 @@ workflow ShardedCluster {
   #Output
   output {
     File clustered_vcf = ConcatShards.concat_vcf
+    File clustered_vcf_idx = ConcatShards.concat_vcf_idx
   }
 }
 
@@ -150,7 +156,7 @@ task GetVcfHeaderWithMembersInfoLine {
 task ShardVcfPrecluster {
   input {
     File vcf
-    File? vcf_idx
+    File vcf_idx
     Int dist
     Float frac
     Int max_shards
@@ -162,7 +168,7 @@ task ShardVcfPrecluster {
 
   # generally assume working disk size is ~2 * inputs, and outputs are ~2 *inputs, and inputs are not removed
   # generally assume working memory is ~3 * inputs
-  Float shard_size = size(select_all([vcf, vcf_idx]), "GiB")
+  Float shard_size = size([vcf, vcf_idx], "GiB")
   Float base_disk_gb = 10.0
   Float base_mem_gb = 2.0
   Float input_mem_scale = 3.0
@@ -188,8 +194,6 @@ task ShardVcfPrecluster {
 
   command <<<
     set -eu -o pipefail
-
-    ~{if defined(vcf_idx) then "" else "tabix -f -p vcf ~{vcf}"}
 
     /opt/sv-pipeline/04_variant_resolution/scripts/shardVCF_preClustering_part1.sh \
       -D ~{dist} \
