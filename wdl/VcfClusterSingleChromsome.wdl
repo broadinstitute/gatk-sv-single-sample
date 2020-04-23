@@ -8,9 +8,9 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "Structs.wdl"
-import "Tasks0506.wdl" as MiniTasks
-import "ClusterSingleChromosome.wdl" as VcfClusterTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Tasks0506.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/ClusterSingleChromosome.wdl" as VcfClusterTasks
 
 # Workflow to run parallelized vcf clustering for a single chromosome
 workflow VcfClusterSingleChrom {

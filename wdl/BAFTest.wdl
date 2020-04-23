@@ -8,8 +8,8 @@
 
 version 1.0
 
-import "Tasks02.wdl" as tasks02
-import "BAFTestChromosome.wdl" as bafc
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Tasks02.wdl" as tasks02
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/BAFTestChromosome.wdl" as bafc
 
 workflow BAFTest {
 

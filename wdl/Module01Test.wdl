@@ -1,8 +1,8 @@
 version 1.0
 
-import "Module01.wdl" as module
-import "Module01Metrics.wdl" as metrics
-import "TestUtils.wdl" as utils
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module01.wdl" as module
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module01Metrics.wdl" as metrics
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/TestUtils.wdl" as utils
 
 workflow Module01Test {
   input {

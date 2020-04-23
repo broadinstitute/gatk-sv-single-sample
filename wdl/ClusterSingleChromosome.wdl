@@ -8,8 +8,8 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "Tasks0506.wdl" as MiniTasks
-import "ShardedCluster.wdl" as ShardedCluster
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Tasks0506.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/ShardedCluster.wdl" as ShardedCluster
 
 # Workflow to perform sharding & clustering of a vcf for a single chromosome
 workflow ClusterSingleChrom {

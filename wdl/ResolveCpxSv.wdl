@@ -8,7 +8,7 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "Tasks0506.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Tasks0506.wdl" as MiniTasks
 
 #Resolve complex SV for a single chromosome
 workflow ResolveComplexSv {

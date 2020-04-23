@@ -6,7 +6,7 @@ version 1.0
 # Contact: Ryan Collins <rlcollins@g.harvard.edu>
 # Distributed under terms of the MIT license.
 
-import "Tasks0506.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Tasks0506.wdl" as MiniTasks
 
 # Workflow to perform per-sample benchmarking from an SV VCF vs an external dataset
 workflow PerSampleExternalBenchmark {

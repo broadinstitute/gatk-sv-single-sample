@@ -8,8 +8,8 @@ version 1.0
 
 # Distributed under terms of the MIT License
 
-import "GenotypeCpxCnvsPerBatch.wdl" as RunDepthGenotypePerBatch
-import "Tasks0506.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/GenotypeCpxCnvsPerBatch.wdl" as RunDepthGenotypePerBatch
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Tasks0506.wdl" as MiniTasks
 
 # Workflow to perform depth-based genotyping for a single vcf shard scattered
 # across batches on predicted CPX CNVs from 04b

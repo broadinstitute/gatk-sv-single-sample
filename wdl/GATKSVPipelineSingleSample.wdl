@@ -1,21 +1,21 @@
 version 1.0
 
-import "Module00a.wdl" as m00a
-import "Module00b.wdl" as m00b
-import "PloidyEstimation.wdl" as pe
-import "Module00c.wdl" as m00c
-import "DepthPreprocessing.wdl" as dpn
-import "Module01.wdl" as m01
-import "Module02.wdl" as m02
-import "SRTest.wdl" as SRTest
-import "Module03.wdl" as m03
-import "Module04.wdl" as m04
-import "Module05_06.wdl" as m0506
-import "GermlineCNVCase.wdl" as gcnv
-import "SingleSampleFiltering.wdl" as SingleSampleFiltering
-import "GATKSVPipelineSingleSampleMetrics.wdl" as SingleSampleMetrics
-import "Utils.wdl" as utils
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module00a.wdl" as m00a
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module00b.wdl" as m00b
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/PloidyEstimation.wdl" as pe
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module00c.wdl" as m00c
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/DepthPreprocessing.wdl" as dpn
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module01.wdl" as m01
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module02.wdl" as m02
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/SRTest.wdl" as SRTest
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module03.wdl" as m03
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module04.wdl" as m04
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Module05_06.wdl" as m0506
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/GermlineCNVCase.wdl" as gcnv
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/SingleSampleFiltering.wdl" as SingleSampleFiltering
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/GATKSVPipelineSingleSampleMetrics.wdl" as SingleSampleMetrics
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Utils.wdl" as utils
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Structs.wdl"
 
 # GATK SV Pipeline single sample mode
 # Runs Modules 00abc, 01, 03.MergePesrVcfs, 04, 05/06

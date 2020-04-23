@@ -1,6 +1,6 @@
 version 1.0
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Structs.wdl"
 
 workflow CombineReassess {
   input {

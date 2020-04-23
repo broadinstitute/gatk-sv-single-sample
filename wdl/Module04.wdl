@@ -8,11 +8,11 @@
 
 version 1.0
 
-import "GenotypePESRPart1.wdl" as gp1
-import "GenotypePESRPart2.wdl" as gp2
-import "GenotypeDepthPart1.wdl" as gd1
-import "GenotypeDepthPart2.wdl" as gd2
-import "Tasks04.wdl" as tasks04
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/GenotypePESRPart1.wdl" as gp1
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/GenotypePESRPart2.wdl" as gp2
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/GenotypeDepthPart1.wdl" as gd1
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/GenotypeDepthPart2.wdl" as gd2
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7/wdl/Tasks04.wdl" as tasks04
 workflow Module04 {
   input {
     File batch_depth_vcf
