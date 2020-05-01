@@ -140,7 +140,7 @@ task GetUniqueNonGenotypedDepthCalls {
     sampleIndex=`gzip -cd ~{vcf_gz} | grep '^#CHROM' | cut -f10- | tr "\t" "\n" | awk '$1 == "~{sample_id}" {found=1; print NR - 1} END { if (found != 1) { print "sample not found"; exit 1; }}'`
 
     bcftools filter \
-        -i "FILTER == \"PASS\" && GT[${sampleIndex}]!=\"alt\" && INFO/ALGORITHMS[*] == \"depth\" && INFO/SVLEN >= 10000" \
+        -i "FILTER == \"PASS\" && GT[${sampleIndex}]!=\"alt\" && INFO/ALGORITHMS[*] == \"depth\" && INFO/SVLEN >= 10000 && (INFO/SVTYPE == \"DEL\" || INFO/SVTYPE == \"DUP\")" \
         ~{vcf_gz} | bgzip -c > pass_depth_not_alt.vcf.gz
 
     bgzip -cd pass_depth_not_alt.vcf.gz | grep '#' > header.txt

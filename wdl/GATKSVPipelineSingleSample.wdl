@@ -176,7 +176,6 @@ workflow GATKSVPipelineSingleSample {
     RuntimeAttr? median_cov_runtime_attr        # Memory ignored, use median_cov_mem_gb_per_sample
     Float? median_cov_mem_gb_per_sample
 
-    Int? evidence_merging_BAF_size_mb
     Int? evidence_merging_PE_size_mb
     Int? evidence_merging_SR_size_mb
     Int? evidence_merging_bincov_size_mb
@@ -485,7 +484,6 @@ workflow GATKSVPipelineSingleSample {
       condense_counts_docker = condense_counts_docker,
       median_cov_runtime_attr=median_cov_runtime_attr,
       median_cov_mem_gb_per_sample=median_cov_mem_gb_per_sample,
-      evidence_merging_BAF_size_mb=evidence_merging_BAF_size_mb,
       evidence_merging_PE_size_mb=evidence_merging_PE_size_mb,
       evidence_merging_SR_size_mb=evidence_merging_SR_size_mb,
       evidence_merging_bincov_size_mb=evidence_merging_bincov_size_mb,
@@ -884,6 +882,6 @@ workflow GATKSVPipelineSingleSample {
   meta {
     author: "Christopher Whelan"
     email: "cwhelan@broadinstitute.org"
-    description: "GATK-SV pipeline for clinical WGS structural variation calling. This is a prototype version under development that is not supported."
+    description: "GATK-SV pipeline for single sample WGS structural variation calling. This is a prototype version under development that is not supported."
   }
 }
