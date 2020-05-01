@@ -10,7 +10,7 @@ version 1.0
 
 # Workflow definition for Calculating Median Coverage 
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/Structs.wdl"
 
 workflow MedianCov {
   input {

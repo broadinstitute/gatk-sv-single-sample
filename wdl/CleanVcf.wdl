@@ -6,8 +6,8 @@ version 1.0
 # based on snapshot 20
 # https://portal.firecloud.org/#methods/Talkowski-SV/05_CleanVCF3/20/wdl
 
-import "Structs.wdl"
-import "Tasks0506.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/Tasks0506.wdl" as MiniTasks
 
 workflow CleanVcf {
   input {

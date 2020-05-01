@@ -19,17 +19,17 @@ version 1.0
 
 #Imports:
 # based on snapshot 11
-import "VcfClusterSingleChromsome.wdl" as VcfClusterContig
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/VcfClusterSingleChromsome.wdl" as VcfClusterContig
 # based on snapshot 28
-import "ResolveCpxSv.wdl" as ResolveComplexContig
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/ResolveCpxSv.wdl" as ResolveComplexContig
 # based on snapshot 12
-import "ScatterCpxGenotyping.wdl" as GenotypeComplexContig
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/ScatterCpxGenotyping.wdl" as GenotypeComplexContig
 # based on snapshot 93
-import "CleanVcf.wdl" as CleanVcfContig
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/CleanVcf.wdl" as CleanVcfContig
 # based on snapshot 75
-import "master_vcf_qc.wdl" as VcfQc
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/master_vcf_qc.wdl" as VcfQc
 
-import "Tasks0506.wdl" as MiniTasks
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/Tasks0506.wdl" as MiniTasks
 
 workflow Module05_06 {
   input {

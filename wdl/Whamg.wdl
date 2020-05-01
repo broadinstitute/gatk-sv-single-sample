@@ -1,7 +1,7 @@
 version 1.0
 
-import "Structs.wdl"
-import "CramToBam.wdl" as ctb
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/CramToBam.wdl" as ctb
 
 # Run Whamg SV detection algorithm on whole genome in bam or cram
 #   file, or if whitelist is provided, run whamg on whitelisted

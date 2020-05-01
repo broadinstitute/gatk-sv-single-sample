@@ -8,7 +8,7 @@
 
 version 1.0
 
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/Structs.wdl"
 
 # Workflow to run PE/SR collection on a single sample
 workflow PESRCollection {

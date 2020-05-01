@@ -8,8 +8,8 @@
 
 version 1.0
 
-import "BAFFromGVCFs.wdl" as baf
-import "Structs.wdl"
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/BAFFromGVCFs.wdl" as baf
+import "https://raw.githubusercontent.com/broadinstitute/gatk-sv-clinical/v0.7.1/wdl/Structs.wdl"
 
 workflow BAFFromShardedVCF {
   input {
