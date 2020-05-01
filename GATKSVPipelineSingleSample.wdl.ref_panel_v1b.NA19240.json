@@ -34,7 +34,7 @@
   "GATKSVPipelineSingleSample.sv_base_docker": "gatksv/sv-base:cbb1fc",
   "GATKSVPipelineSingleSample.sv_pipeline_base_docker": "mwalker174/sv-pipeline-base:mw-svtk-common-8d0ebd7",
   "GATKSVPipelineSingleSample.sv_base_mini_docker": "gatksv/sv-base-mini:cbb1fc",
-  "GATKSVPipelineSingleSample.sv_pipeline_docker": "cwhelan/sv-pipeline:cw_4937704_clinical_single_sample",
+  "GATKSVPipelineSingleSample.sv_pipeline_docker": "cwhelan/sv-pipeline:cw_45c5354_single_sample_errors",
   "GATKSVPipelineSingleSample.sv_pipeline_qc_docker": "gatksv/sv-pipeline-qc:cbb1fc",
   "GATKSVPipelineSingleSample.sv_pipeline_rdtest_docker": "gatksv/sv-pipeline-rdtest:cbb1fc",
   "GATKSVPipelineSingleSample.wham_docker": "gatksv/wham:8645aa",
