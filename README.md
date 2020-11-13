@@ -1,3 +1,5 @@
+#### This repository is deprecated. Please use the GATK-SV single sample pipeline WDL found in the https://github.com/broadinstitute/gatk-sv repository. 
+
 # gatk-sv-single-sample
 
 This repository contains WDL scripts to run the GATK-SV Single Sample WGS Structural Variation detection pipeline.
